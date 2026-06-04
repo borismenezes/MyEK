@@ -1,0 +1,15 @@
+{
+  "travelType": "ID90",
+  "date": "23 MAY",
+  "origin": "DXB",
+  "destination": "BKK",
+  "departureTime": "02:45",
+  "arrivalTime": "12:55",
+  "seat": "24A",
+  "bookingRef": "2X9JLM",
+  "flightNumber": "EK 0418",
+  "duration": "6h 10m",
+  "gate": "A12",
+  "terminal": "3",
+  "status": "on_time"
+}

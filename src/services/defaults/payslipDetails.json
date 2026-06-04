@@ -1,0 +1,24 @@
+{
+  "periodLabel": "PAY ADVICE FOR APRIL 2025",
+  "employeeNumber": "10000",
+  "employeeName": "ELVINA MARTIS",
+  "position": "Cabin Crew",
+  "organization": "EDI10",
+  "doj": "03-Sep-2003",
+  "grade": "CC.04",
+  "currency": "AED",
+  "payments": [
+    { "label": "Accommodation Allowance", "amount": 4500 },
+    { "label": "Basic Salary", "amount": 12000 },
+    { "label": "Transport Allowance", "amount": 800 },
+    { "label": "Transport Allowance Retro", "amount": 200 }
+  ],
+  "deductions": [
+    { "label": "Concessional Travel Tickets Deduction", "amount": 350 },
+    { "label": "Emirates Premium Staff Card Deduction", "amount": 150 }
+  ],
+  "bankBranchName": "A0225190207",
+  "accountNumber": "AE66XXXXXXXXXXX6666",
+  "netPayAmount": 17000,
+  "message": "Annual Leave balance as on 31-April-2025 is 37.70 working hours which equates to 6.28 calendar days."
+}

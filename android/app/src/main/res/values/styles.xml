@@ -1,9 +1,12 @@
 <resources>
 
-    <!-- Base application theme. -->
+    <!-- Base application theme. windowBackground is shown by the OS during
+         cold start, before JS can render. Plain black matches the dark-mode
+         <SplashScreen /> exactly; in light mode there's a brief black before
+         JS swaps to white. Acceptable trade for avoiding a vivid red flash. -->
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:windowBackground">@android:color/black</item>
     </style>
 
 </resources>

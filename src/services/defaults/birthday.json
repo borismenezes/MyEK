@@ -1,0 +1,9 @@
+{
+  "name": "Elvina Martis",
+  "message": "On behalf of the Emirates Group, we wish you a year of safe skies, new horizons, and well-earned moments. Thank you for being part of our journey.",
+  "perks": [
+    { "label": "+1 day leave gift", "icon": "gift" },
+    { "label": "Lounge access", "icon": "sparkles" }
+  ],
+  "wishesCount": 12
+}

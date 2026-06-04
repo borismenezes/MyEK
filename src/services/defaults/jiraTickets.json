@@ -1,0 +1,8 @@
+{
+  "total": 6,
+  "byStatus": {
+    "todo": 2,
+    "inProgress": 3,
+    "blocked": 1
+  }
+}

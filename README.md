@@ -1,97 +1,149 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# MyEK · Emirates Group Employee Portal
 
-# Getting Started
+A production-grade React Native (TypeScript) implementation of the Emirates Group employee portal — dynamic widgets, API-versioned services, offline-first data, drag-drop home grid, and Microsoft Intune SSO.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Features
 
-## Step 1: Start Metro
+- **Microsoft Intune SSO** — clean adapter interface; the bundled mock implementation can be swapped for real MSAL with one line.
+- **API versioning per service** — server tells the client which version to call for each domain (leave, payslip, etc.). Roll out v2 to a subset of users without an app release.
+- **Widget system** — every home tile is a config-driven widget loaded from a registry. Add a new widget in two steps: write the component, register it.
+- **Drag-drop home grid** — iPhone-style 2-column grid, long-press to enter edit mode, drag to reorder. Powered by Reanimated 3 + Gesture Handler 2.
+- **Offline-first** — every widget caches its last response (MMKV). Cache is served instantly on cold start and on connection loss; the offline banner tells the user how stale the data is. A sync manager refreshes everything when the network returns.
+- **Themed light + dark** — token-based theme with system-mode support.
+- **Feature flags** — server-driven flags merged with build-time defaults and (in debug builds) local overrides.
+- **Logging** — scoped logger with pluggable transports; remote stub ready for App Insights / Datadog.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Project structure
 
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+```
+src/
+├── api/              Axios client, version manager, endpoints
+├── auth/             Intune SSO adapter + auth orchestration
+├── components/       Reusable UI primitives (Icon, Avatar, Card, DraggableGrid…)
+├── widgets/          Widget components, registry, renderer, shell
+├── screens/          Login, Home, Services, Profile, More
+├── navigation/       Root + Tab navigators
+├── store/            Zustand stores (auth, network, cache, theme)
+├── hooks/            useWidgetData, useNetworkStatus
+├── services/         Business logic (widgetService, homeService)
+├── offline/          cacheManager, syncManager
+├── theme/            Tokens + ThemeProvider
+├── utils/            Logger, storage, feature flags, helpers
+├── types/            All TypeScript interfaces
+└── config/           Environment-aware config
+mocks/                Express mock backend
+__tests__/            Jest tests
+App.tsx               Providers + bootstrap orchestration
 ```
 
-## Step 2: Build and run your app
+## Running locally
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+### 1. Install
 
-### Android
+```bash
+npm install
+cd ios && pod install && cd ..   # iOS only
+```
 
-```sh
-# Using npm
+### 2. Start the mock backend
+
+```bash
+npm run mock
+# 🟢 MyEK mock backend listening on http://localhost:4000
+```
+
+### 3. Point the app at the mock
+
+Copy `.env.example` → `.env` and set:
+
+```
+API_BASE_URL=http://localhost:4000           # iOS simulator
+# API_BASE_URL=http://10.0.2.2:4000          # Android emulator
+```
+
+### 4. Run the app
+
+```bash
+npm run start          # Metro
+npm run ios            # in another terminal
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
+Tap **Sign in with Microsoft** on the login screen. The mock accepts any grant and returns a full bootstrap (user + apps + widget layout + per-service API versions).
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Architecture
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+### The auth bootstrap
 
-```sh
-bundle install
+A single `LoginResult` returned from `/auth/login` is the seed for the whole app. It contains:
+
+```ts
+{
+  user, session, permissions,
+  apps: AppConfig[],            // catalogue of internal apps
+  widgetLayout: WidgetConfig[], // home screen layout
+  apiVersions: { leave: 'v2', payslip: 'v1', ... },
+  featureFlags: { darkMode: true, ... }
+}
 ```
 
-Then, and every time you update your native dependencies, run:
+The auth service writes everything into the Zustand store, the version registry, and persistent storage. On cold start `hydrateAuth()` restores all of it before the first frame renders, so the user sees their last-known home grid immediately — even offline.
 
-```sh
-bundle exec pod install
+### Adding a widget
+
+1. **Define the payload** in `types/widgets.ts`:
+   ```ts
+   export interface RosterPayload { /* ... */ }
+   ```
+2. **Build the component** in `widgets/RosterWidget.tsx`:
+   ```tsx
+   export const RosterWidget: React.FC<WidgetProps<RosterPayload>> = ({ data }) => { /* ... */ }
+   ```
+3. **Register it** in `widgets/WidgetRegistry.ts`:
+   ```ts
+   roster: {
+     widgetId: 'roster',
+     name: 'Roster',
+     icon: 'plane',
+     component: RosterWidget,
+     supportedSizes: ['small', 'large'],
+     surface: true,
+   }
+   ```
+4. **Have the server include it** in `widgetLayout` for relevant users.
+
+That's it — the renderer picks it up, the cache and offline strategy apply automatically, and it shows up in edit mode for repositioning.
+
+### Versioning a service
+
+Server flips a user from `leave: 'v1'` to `leave: 'v2'` in the `apiVersions` map. Next bootstrap, every widget bound to the leave service hits `/v2/leave/...`. Cache keys include the version, so v1 entries don't bleed into v2 results.
+
+### Offline strategy
+
+`widgetService.fetch()` decision tree:
+
+1. Cache fresh (< 5 min) and not forced → return cache.
+2. Offline → cache (any age) or error if none.
+3. Online → network; on success cache, on failure fall back to cache.
+
+`syncManager` listens for offline → online transitions and refreshes every visible widget in parallel.
+
+### Swapping the Intune mock for real MSAL
+
+`src/auth/intuneAuth.ts` exposes an `IntuneAdapter` interface. Replace `MockIntuneAdapter` with the commented `MsalIntuneAdapter` sketch (uses `react-native-msal`). No other file needs to change.
+
+## Testing
+
+```bash
+npm test           # Jest
+npm run typecheck  # tsc --noEmit
+npm run lint
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+A starter test for the cache manager lives in `__tests__/cacheManager.test.ts`.
 
-```sh
-# Using npm
-npm run ios
+## Notes on this build
 
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- Gradients are approximated with stacked SVG rects to avoid the native `react-native-linear-gradient` dependency. Swap in the real package for production gradients.
+- The `FauxQR` component is a deterministic placeholder; replace with `react-native-qrcode-svg` if you need scannable codes.
+- The mock backend is intentionally permissive (no auth checks). Don't enable it in any environment a real device can reach.
