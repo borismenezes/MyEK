@@ -1,0 +1,61 @@
+{
+  "weekStartDate": "2026-05-11",
+  "days": [
+    {
+      "date": "2026-05-11",
+      "dayOfWeek": "Mon",
+      "isBusinessDay": true,
+      "inTime": "2026-05-11T08:42:00.000Z",
+      "outTime": "2026-05-11T17:48:00.000Z",
+      "workedMinutes": 546
+    },
+    {
+      "date": "2026-05-12",
+      "dayOfWeek": "Tue",
+      "isBusinessDay": true,
+      "inTime": "2026-05-12T08:55:00.000Z",
+      "outTime": "2026-05-12T17:30:00.000Z",
+      "workedMinutes": 515
+    },
+    {
+      "date": "2026-05-13",
+      "dayOfWeek": "Wed",
+      "isBusinessDay": true,
+      "inTime": "2026-05-13T09:10:00.000Z",
+      "outTime": "2026-05-13T16:35:00.000Z",
+      "workedMinutes": 445
+    },
+    {
+      "date": "2026-05-14",
+      "dayOfWeek": "Thu",
+      "isBusinessDay": true,
+      "inTime": "2026-05-14T08:30:00.000Z",
+      "outTime": "2026-05-14T17:15:00.000Z",
+      "workedMinutes": 525
+    },
+    {
+      "date": "2026-05-15",
+      "dayOfWeek": "Fri",
+      "isBusinessDay": true,
+      "inTime": "2026-05-15T08:48:00.000Z",
+      "outTime": "2026-05-15T15:18:00.000Z",
+      "workedMinutes": 390
+    },
+    {
+      "date": "2026-05-16",
+      "dayOfWeek": "Sat",
+      "isBusinessDay": false,
+      "inTime": null,
+      "outTime": null,
+      "workedMinutes": 0
+    },
+    {
+      "date": "2026-05-17",
+      "dayOfWeek": "Sun",
+      "isBusinessDay": false,
+      "inTime": null,
+      "outTime": null,
+      "workedMinutes": 0
+    }
+  ]
+}

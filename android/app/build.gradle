@@ -77,9 +77,22 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.myek"
+    namespace "com.myek.app.bm.dev"
     defaultConfig {
-        applicationId "com.myek"
+        applicationId "com.myek.app.bm.dev"
+        ndk {
+            abiFilters "arm64-v8a"
+        }
+        manifestPlaceholders = [
+            // MSAL: BrowserTabActivity intent-filter values. The signature hash
+            // must come from the keystore that signs your APK and be URL-encoded.
+            // Get it with:
+            //   keytool -exportcert -alias androiddebugkey -keystore app/debug.keystore | openssl sha1 -binary | openssl base64
+            // then URL-encode the result.
+            msalRedirectScheme: "msauth",
+            msalRedirectHost: "com.myek.app.bm.dev",
+            msalRedirectPath: "/Xo8WBi6jzSxKDVR4drqm84yr9iU="
+        ]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -105,6 +118,10 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+}
+
+configurations.all {
+    exclude group: 'com.microsoft.device.display', module: 'display-mask'
 }
 
 dependencies {

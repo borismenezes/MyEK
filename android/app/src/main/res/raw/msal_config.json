@@ -1,0 +1,16 @@
+{
+  "client_id": "d3c3e357-0ec2-4773-9a87-0d8568af71b9",
+  "authorization_user_agent": "DEFAULT",
+  "redirect_uri": "msauth://com.myek.app.bm.dev/Xo8WBi6jzSxKDVR4drqm84yr9iU%3D",
+  "account_mode": "SINGLE",
+  "broker_redirect_uri_registered": false,
+  "authorities": [
+    {
+      "type": "AAD",
+      "audience": {
+        "type": "AzureADMyOrg",
+        "tenant_id": "8f21b738-bcfc-4c5d-9a73-cfa5cb5ee6f8"
+      }
+    }
+  ]
+}

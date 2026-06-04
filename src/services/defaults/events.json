@@ -1,0 +1,38 @@
+{
+  "events": [
+    {
+      "id": "evt-birthday-2026-05-12",
+      "kind": "birthday",
+      "date": "2026-05-09",
+      "title": "Happy Birthday!",
+      "message": "On behalf of the Emirates Group, we wish you a year of safe skies, new horizons, and well-earned moments.",
+      "color": "#C60C30",
+      "perks": [
+        { "label": "+1 day leave", "icon": "gift" },
+        { "label": "Lounge access", "icon": "sparkles" }
+      ]
+    },
+    {
+      "id": "evt-newyear-2026-05-12",
+      "kind": "newYear",
+      "date": "2026-05-09",
+      "title": "Happy New Year!",
+      "message": "Wishing you a year of fresh starts, smooth flights, and great moments with the team.",
+      "color": "#3B2F87",
+      "perks": [
+        { "label": "Team lunch", "icon": "gift" }
+      ]
+    },
+    {
+      "id": "evt-newyear-2026-05-12",
+      "kind": "newYear",
+      "date": "2026-05-09",
+      "title": "EID Mubarrak!",
+      "message": "Wishing you a year of fresh starts, smooth flights, and great moments with the team.",
+      "color": "#0F8A6A",
+      "perks": [
+        { "label": "Team lunch", "icon": "gift" }
+      ]
+    }
+  ]
+}

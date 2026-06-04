@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Solid red square; iOS/Android masks impose corner radius. Keep flat for the master. -->
+  <rect width="1024" height="1024" fill="#D71921"/>
+
+  <!-- Network hub spokes -->
+  <g stroke="#FFFFFF" stroke-width="33" stroke-linecap="round" fill="none">
+    <line x1="512" y1="205" x2="512" y2="819"/>
+    <line x1="205" y1="512" x2="819" y2="512"/>
+    <line x1="333" y1="333" x2="691" y2="691"/>
+  </g>
+
+  <!-- Outer nodes -->
+  <g fill="#FFFFFF">
+    <circle cx="512" cy="205" r="62"/>
+    <circle cx="205" cy="512" r="62"/>
+    <circle cx="819" cy="512" r="62"/>
+    <circle cx="512" cy="819" r="62"/>
+    <circle cx="691" cy="691" r="48"/>
+  </g>
+
+  <!-- Center badge -->
+  <circle cx="512" cy="512" r="161" fill="#FFFFFF"/>
+  <text x="512" y="571"
+        text-anchor="middle"
+        font-family="Helvetica, 'Arial Black', sans-serif"
+        font-size="154"
+        font-weight="900"
+        letter-spacing="-7"
+        fill="#D71921">EK</text>
+</svg>

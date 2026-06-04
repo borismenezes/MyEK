@@ -1,0 +1,33 @@
+{
+  "weekLabel": "Week of May 12",
+  "duties": [
+    {
+      "dayLabel": "MON",
+      "dayNumber": "12",
+      "type": "flight",
+      "origin": "DXB",
+      "destination": "JFK",
+      "flightNumber": "EK 0202",
+      "duration": "14h 10m",
+      "role": "Cabin Crew"
+    },
+    {
+      "dayLabel": "TUE",
+      "dayNumber": "14",
+      "type": "flight",
+      "origin": "JFK",
+      "destination": "DXB",
+      "flightNumber": "EK 0203",
+      "duration": "12h 05m",
+      "role": "Cabin Crew"
+    },
+    {
+      "dayLabel": "WED",
+      "dayNumber": "18",
+      "type": "off",
+      "status": "Off Duty",
+      "note": "Rest day"
+    }
+    
+  ]
+}

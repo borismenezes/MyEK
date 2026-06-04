@@ -1,0 +1,65 @@
+{
+  "balance": {
+    "total": 30,
+    "used": 12,
+    "pending": 3,
+    "unit": "days"
+  },
+  "approvedCount": 4,
+  "items": [
+    {
+      "id": "lv-2026-001",
+      "leaveType": "Annual",
+      "startDate": "2026-06-12",
+      "endDate": "2026-06-19",
+      "status": "approved",
+      "reason": "Family holiday"
+    },
+    {
+      "id": "lv-2026-002",
+      "leaveType": "Sick",
+      "startDate": "2026-04-22",
+      "endDate": "2026-04-23",
+      "status": "approved"
+    },
+    {
+      "id": "lv-2026-003",
+      "leaveType": "Compassionate",
+      "startDate": "2026-03-08",
+      "endDate": "2026-03-10",
+      "status": "approved"
+    },
+    {
+      "id": "lv-2026-004",
+      "leaveType": "Annual",
+      "startDate": "2026-02-14",
+      "endDate": "2026-02-21",
+      "status": "approved",
+      "reason": "Winter break"
+    },
+    {
+      "id": "lv-2026-005",
+      "leaveType": "Annual",
+      "startDate": "2026-07-01",
+      "endDate": "2026-07-08",
+      "status": "pending",
+      "reason": "Anniversary trip"
+    },
+    {
+      "id": "lv-2026-006",
+      "leaveType": "Unpaid",
+      "startDate": "2026-01-05",
+      "endDate": "2026-01-09",
+      "status": "rejected",
+      "reason": "Conflicts with project release"
+    },
+    {
+      "id": "lv-2026-007",
+      "leaveType": "Annual",
+      "startDate": "2025-12-22",
+      "endDate": "2025-12-30",
+      "status": "cancelled",
+      "reason": "Plans changed"
+    }
+  ]
+}

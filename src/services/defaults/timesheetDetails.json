@@ -1,0 +1,140 @@
+{
+  "rangeStartDate": "2026-04-30",
+  "rangeEndDate": "2026-05-13",
+  "targetHoursPerDay": 8.5,
+  "days": [
+    {
+      "date": "2026-04-30",
+      "dayOfWeek": "Thu",
+      "isBusinessDay": true,
+      "totalHours": 8.5,
+      "entries": [
+        { "id": "ts-0430-1", "story": "MYEK-1801 · Leave widget regression", "taxonomy": "Engineering · Bugfix", "hours": 4 },
+        { "id": "ts-0430-2", "story": "MYEK-1812 · Code review backlog", "taxonomy": "Engineering · Review", "hours": 2.5 },
+        { "id": "ts-0430-3", "story": "Sprint planning", "taxonomy": "Meeting", "hours": 2 }
+      ]
+    },
+    {
+      "date": "2026-05-01",
+      "dayOfWeek": "Fri",
+      "isBusinessDay": true,
+      "totalHours": 6,
+      "entries": [
+        { "id": "ts-0501-1", "story": "MYEK-1815 · Attendance detail layout", "taxonomy": "Engineering · Feature", "hours": 4.5 },
+        { "id": "ts-0501-2", "story": "1:1 with manager", "taxonomy": "Meeting", "hours": 1.5 }
+      ]
+    },
+    {
+      "date": "2026-05-02",
+      "dayOfWeek": "Sat",
+      "isBusinessDay": false,
+      "totalHours": 0,
+      "entries": []
+    },
+    {
+      "date": "2026-05-03",
+      "dayOfWeek": "Sun",
+      "isBusinessDay": false,
+      "totalHours": 0,
+      "entries": []
+    },
+    {
+      "date": "2026-05-04",
+      "dayOfWeek": "Mon",
+      "isBusinessDay": true,
+      "totalHours": 8.5,
+      "entries": [
+        { "id": "ts-0504-1", "story": "MYEK-1820 · Wire APIM dispatch for leave", "taxonomy": "Engineering · Feature", "hours": 5 },
+        { "id": "ts-0504-2", "story": "Architecture review", "taxonomy": "Meeting", "hours": 1.5 },
+        { "id": "ts-0504-3", "story": "Backlog grooming", "taxonomy": "Meeting", "hours": 2 }
+      ]
+    },
+    {
+      "date": "2026-05-05",
+      "dayOfWeek": "Tue",
+      "isBusinessDay": true,
+      "totalHours": 9,
+      "entries": [
+        { "id": "ts-0505-1", "story": "MYEK-1824 · Business card service", "taxonomy": "Engineering · Feature", "hours": 6 },
+        { "id": "ts-0505-2", "story": "MYEK-1827 · Share image dark backdrop", "taxonomy": "Engineering · Bugfix", "hours": 3 }
+      ]
+    },
+    {
+      "date": "2026-05-06",
+      "dayOfWeek": "Wed",
+      "isBusinessDay": true,
+      "totalHours": 7,
+      "entries": [
+        { "id": "ts-0506-1", "story": "MYEK-1830 · Appreciations APIM wire", "taxonomy": "Engineering · Feature", "hours": 4 },
+        { "id": "ts-0506-2", "story": "Town hall", "taxonomy": "Meeting", "hours": 1 },
+        { "id": "ts-0506-3", "story": "Pair debugging session", "taxonomy": "Engineering · Review", "hours": 2 }
+      ]
+    },
+    {
+      "date": "2026-05-07",
+      "dayOfWeek": "Thu",
+      "isBusinessDay": true,
+      "totalHours": 8.5,
+      "entries": [
+        { "id": "ts-0507-1", "story": "MYEK-1834 · Manifest overlay logic", "taxonomy": "Engineering · Feature", "hours": 5.5 },
+        { "id": "ts-0507-2", "story": "MYEK-1836 · Doc updates", "taxonomy": "Documentation", "hours": 1 },
+        { "id": "ts-0507-3", "story": "Stand-up + sync", "taxonomy": "Meeting", "hours": 2 }
+      ]
+    },
+    {
+      "date": "2026-05-08",
+      "dayOfWeek": "Fri",
+      "isBusinessDay": true,
+      "totalHours": 5,
+      "entries": [
+        { "id": "ts-0508-1", "story": "MYEK-1840 · Outlook meetings widget", "taxonomy": "Engineering · Feature", "hours": 4 },
+        { "id": "ts-0508-2", "story": "Quarterly review prep", "taxonomy": "Meeting", "hours": 1 }
+      ]
+    },
+    {
+      "date": "2026-05-09",
+      "dayOfWeek": "Sat",
+      "isBusinessDay": false,
+      "totalHours": 0,
+      "entries": []
+    },
+    {
+      "date": "2026-05-10",
+      "dayOfWeek": "Sun",
+      "isBusinessDay": false,
+      "totalHours": 0,
+      "entries": []
+    },
+    {
+      "date": "2026-05-11",
+      "dayOfWeek": "Mon",
+      "isBusinessDay": true,
+      "totalHours": 8.5,
+      "entries": [
+        { "id": "ts-0511-1", "story": "MYEK-1845 · Jira tickets widget", "taxonomy": "Engineering · Feature", "hours": 5.5 },
+        { "id": "ts-0511-2", "story": "Sprint planning", "taxonomy": "Meeting", "hours": 2 },
+        { "id": "ts-0511-3", "story": "Code review queue", "taxonomy": "Engineering · Review", "hours": 1 }
+      ]
+    },
+    {
+      "date": "2026-05-12",
+      "dayOfWeek": "Tue",
+      "isBusinessDay": true,
+      "totalHours": 8.5,
+      "entries": [
+        { "id": "ts-0512-1", "story": "MYEK-1848 · Timesheet detail layout", "taxonomy": "Engineering · Feature", "hours": 7 },
+        { "id": "ts-0512-2", "story": "Design sync", "taxonomy": "Meeting", "hours": 1.5 }
+      ]
+    },
+    {
+      "date": "2026-05-13",
+      "dayOfWeek": "Wed",
+      "isBusinessDay": true,
+      "totalHours": 4.5,
+      "entries": [
+        { "id": "ts-0513-1", "story": "MYEK-1848 · Timesheet detail layout (cont.)", "taxonomy": "Engineering · Feature", "hours": 3.5 },
+        { "id": "ts-0513-2", "story": "Stand-up", "taxonomy": "Meeting", "hours": 1 }
+      ]
+    }
+  ]
+}

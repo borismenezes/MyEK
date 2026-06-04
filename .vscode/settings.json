@@ -1,0 +1,19 @@
+{
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/ios/Pods/**": true,
+    "**/android/build/**": true,
+    "**/android/.gradle/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/ios/Pods": true,
+    "**/android/build": true
+  },
+  "files.exclude": {
+    "**/.DS_Store": true
+  },
+  "typescript.tsserver.experimental.enableProjectDiagnostics": false,
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "typescript.tsdk": "node_modules/typescript/lib"
+}

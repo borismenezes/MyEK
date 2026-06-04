@@ -17,6 +17,12 @@ end
 target 'MyEK' do
   config = use_native_modules!
 
+  # MSAL is pulled in transitively by react-native-msal. Force modular headers
+  # so Swift can `import MSAL` from AppDelegate (needed for the broker-callback
+  # URL handler). Required because RN defaults to static libraries — without
+  # this, the Swift module isn't visible.
+  pod 'MSAL', :modular_headers => true
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

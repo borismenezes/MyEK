@@ -1,4 +1,4 @@
-package com.myek
+package com.myek.app.bm.dev
 
 import android.app.Application
 import com.facebook.react.PackageList
