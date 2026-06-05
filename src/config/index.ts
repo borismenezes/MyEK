@@ -41,13 +41,23 @@ const defaultRedirectUri = Platform.select({
   default: 'msauth.com.myek.app.bm.dev://auth',
 });
 
-// Android dev uses a separate app registration so we can iterate without
-// changing the iOS-shared Emirates app reg. Forces Android off env and onto
-// this client id; iOS continues to read INTUNE_CLIENT_ID from .env.
-const clientIdOverride = Platform.select<string | undefined>({
-  android: 'd3c3e357-0ec2-4773-9a87-0d8568af71b9',
-  default: undefined,
-});
+// ── enterprise-backend integration defaults ───────────────────────────────
+// The enterprise edge (Kong) terminates auth: it validates the Entra bearer
+// against the Emirates tenant and expects the enterprise-app API audience. We
+// mirror enterprise-app's single-token model — one resource-scoped token
+// (`access_as_user`) is acquired and attached to every call; there is no longer
+// a separate sign-in token. Override any of these via the matching env var.
+const ENTERPRISE_TENANT_ID = '86ba65bc-68d5-4e44-9445-b2b8a7a64d5a';
+const ENTERPRISE_API_SCOPE = 'api://c5bc7a7d-550e-408a-9324-b026a363ddf0/access_as_user';
+// Public host fronted by Kong. Both the versioned `apiClient` (`{host}/v1`) and
+// the MyEK service client point here; all MyEK data is served by the backend
+// BFF under `/v1/myek/**`.
+const ENTERPRISE_API_HOST = 'https://thon.mohsal.dev';
+// MyEK's Entra app registration (the client). Both platforms use it now — the
+// token's audience is the enterprise-app resource regardless of client, so a
+// single registration serves iOS + Android. Per-environment overrides (e.g. the
+// real Emirates prod app reg) go via INTUNE_CLIENT_ID.
+const ENTERPRISE_CLIENT_ID = '3122181f-0de3-49fc-9903-c081d7305f22';
 
 /**
  * Centralised, environment-driven config.
@@ -59,50 +69,60 @@ const clientIdOverride = Platform.select<string | undefined>({
 const pick = (value: string | undefined, fallback: string): string =>
   value && value.length > 0 ? value : fallback;
 
+const apiBaseUrl = pick(API_BASE_URL, ENTERPRISE_API_HOST);
+
 export const config = {
   api: {
-    baseUrl: pick(API_BASE_URL, 'https://api.myek.emirates.com'),
+    baseUrl: apiBaseUrl,
     defaultVersion: pick(API_DEFAULT_VERSION, 'v1') as ApiVersion,
     timeoutMs: parseInt(pick(API_TIMEOUT_MS, '15000'), 10),
     maxRetries: parseInt(pick(API_MAX_RETRIES, '3'), 10),
   },
   auth: {
-    tenantId: pick(INTUNE_TENANT_ID, 'common'),
-    clientId: clientIdOverride ?? pick(INTUNE_CLIENT_ID, '00000000-0000-0000-0000-000000000000'),
+    tenantId: pick(INTUNE_TENANT_ID, ENTERPRISE_TENANT_ID),
+    clientId: pick(INTUNE_CLIENT_ID, ENTERPRISE_CLIENT_ID),
     redirectUri: pick(INTUNE_REDIRECT_URI, defaultRedirectUri),
-    scope: pick(INTUNE_SCOPE, 'User.Read').split(/[ ,]+/).filter(Boolean),
+    // Single token: the sign-in scope IS the resource API scope, so MSAL issues
+    // one `access_as_user` token (aud = enterprise-app) that Kong accepts and
+    // every call carries. `INTUNE_SCOPE` overrides only if you need extra scopes.
+    scope: pick(INTUNE_SCOPE, ENTERPRISE_API_SCOPE).split(/[ ,]+/).filter(Boolean),
     get authority(): string {
       return `https://login.microsoftonline.com/${this.tenantId}`;
     },
   },
   apim: {
-    baseUrl: pick(APIM_BASE_URL, ''),
+    // Points at the same Kong edge as `apiClient`. APIM (Azure) is retired —
+    // the legacy subscription-key header is gone (default empty) and every MyEK
+    // service is served by the backend BFF under `/v1/myek/**`.
+    baseUrl: pick(APIM_BASE_URL, apiBaseUrl),
     subscriptionKey: pick(APIM_SUBSCRIPTION_KEY, ''),
-    scope: pick(API_SCOPE, '').split(/[ ,]+/).filter(Boolean),
-    // Path templates per service. `{employeeId}` is substituted at call
-    // time by `buildPath` in `@api/apimClient`. Override via env vars
-    // (APIM_PATH_*) — these defaults are the source of truth when env is
-    // missing.
+    // Same single token as the rest of the app (aud = enterprise-app).
+    scope: pick(API_SCOPE, ENTERPRISE_API_SCOPE).split(/[ ,]+/).filter(Boolean),
+    // BFF routes. Identity comes from the JWT (employee_id) at the edge, so the
+    // `{employeeId}` path param is gone — `buildPath` leaves these unchanged.
+    //   ✓ = MyEK BFF endpoint implemented today (real adapter or mock).
+    //   ◦ = not yet on the BFF; the call 404s and the service falls back to its
+    //       bundled default until the adapter lands (incremental rollout).
     paths: {
-      leave: pick(APIM_PATH_LEAVE, '/clone/hr/myek/leave/leaveWidget/{employeeId}'),
-      businessCard: pick(APIM_PATH_BUSINESS_CARD, '/hr/myek/employee/businessCard/{employeeId}'),
-      appreciations: pick(APIM_PATH_APPRECIATIONS, '/clone-6a044/hr/myek/employee/appreciations/widget/{employeeId}'),
-      attendance: pick(APIM_PATH_ATTENDANCE, '/hr/myek/employee/attendance/widget/{employeeId}'),
-      payslip: pick(APIM_PATH_PAYSLIP, '/clone-clone-clone/hr/myek/ekApp/payroll/payslip/{employeeId}'),
-      roster: pick(APIM_PATH_ROSTER, '/hr/myek/employee/roasters/widget/{employeeId}'),
-      timesheet: pick(APIM_PATH_TIMESHEET, '/hr/myek/employee/timesheets/widget/{employeeId}'),
-      myTrips: pick(APIM_PATH_MY_TRIPS, '/hr/myek/employee/myTrips/widget/{employeeId}'),
-      events: pick(APIM_PATH_EVENTS, '/clone-6a045/hr/myek/employee/events/widget/{employeeId}'),
-      profilePicture: pick(APIM_PATH_PROFILE_PICTURE, '/hr/myek/employee/profile/widget/{employeeId}'),
-      applicationsManifest: pick(APIM_PATH_APPLICATIONS_MANIFEST, '/clone-clone/hr/myek/ekApp/applications/{employeeId}'),
-      documents: pick(APIM_PATH_DOCUMENTS, '/hr/myek/employee/documents/widget/{employeeId}'),
-      leaveDetails: pick(APIM_PATH_LEAVE_DETAILS, '/clone/clone-6a043/hr/myek/leave/leaveDetails/{employeeId}'),
-      platinumVouchers: pick(APIM_PATH_PLATINUM_VOUCHERS, '/hr/myek/platinum/voucherDetails'),
-      attendanceDetails: pick(APIM_PATH_ATTENDANCE_DETAILS, '/hr/myek/employee/attendance/weekDetails/{employeeId}'),
-      userProfile: pick(APIM_PATH_USER_PROFILE, '/hr/myek/employee/idCard/widget/{employeeId}'),
-      timesheetDetails: pick(APIM_PATH_TIMESHEET_DETAILS, '/hr/myek/employee/timesheetDetails/widget/{employeeId}'),
-      myPayslip: pick(APIM_PATH_MY_PAYSLIP, '/hr/myek/employee/myPayslip/widget/{employeeId}'),
-      platinumCard: pick(APIM_PATH_PLATINUM_CARD, '/hr/myek/platinum/cardDetails'),
+      leave: pick(APIM_PATH_LEAVE, '/v1/myek/leave/widget'),                          // ✓
+      businessCard: pick(APIM_PATH_BUSINESS_CARD, '/v1/myek/business-card'),           // ✓
+      appreciations: pick(APIM_PATH_APPRECIATIONS, '/v1/myek/appreciations/widget'),   // ✓
+      attendance: pick(APIM_PATH_ATTENDANCE, '/v1/myek/attendance/widget'),            // ✓
+      payslip: pick(APIM_PATH_PAYSLIP, '/v1/myek/payslip/widget'),                     // ✓
+      roster: pick(APIM_PATH_ROSTER, '/v1/myek/roster/widget'),                        // ✓
+      timesheet: pick(APIM_PATH_TIMESHEET, '/v1/myek/timesheet/widget'),               // ✓
+      myTrips: pick(APIM_PATH_MY_TRIPS, '/v1/myek/my-trips/widget'),                    // ✓
+      events: pick(APIM_PATH_EVENTS, '/v1/myek/events/widget'),                         // ✓
+      documents: pick(APIM_PATH_DOCUMENTS, '/v1/myek/documents/widget'),                // ✓
+      platinumVouchers: pick(APIM_PATH_PLATINUM_VOUCHERS, '/v1/myek/platinum/vouchers'),// ✓
+      platinumCard: pick(APIM_PATH_PLATINUM_CARD, '/v1/myek/platinum/card'),            // ✓
+      leaveDetails: pick(APIM_PATH_LEAVE_DETAILS, '/v1/myek/leave/details'),            // ✓ (real leave-service)
+      profilePicture: pick(APIM_PATH_PROFILE_PICTURE, '/v1/myek/profile-picture'),      // ◦
+      applicationsManifest: pick(APIM_PATH_APPLICATIONS_MANIFEST, '/v1/myek/applications'), // ◦ (bootstrap supplies the manifest)
+      attendanceDetails: pick(APIM_PATH_ATTENDANCE_DETAILS, '/v1/myek/attendance/week'),// ◦
+      userProfile: pick(APIM_PATH_USER_PROFILE, '/v1/myek/user'),                       // ◦ (bootstrap supplies identity)
+      timesheetDetails: pick(APIM_PATH_TIMESHEET_DETAILS, '/v1/myek/timesheet/details'),// ◦
+      myPayslip: pick(APIM_PATH_MY_PAYSLIP, '/v1/myek/payslip/details'),                // ◦
     },
   },
   log: {

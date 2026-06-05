@@ -9,6 +9,8 @@ interface ChatComposerProps {
    *  so the screen surfaces a "coming soon" notification via this callback. */
   onMicPress?(): void;
   placeholder?: string;
+  /** Locks the composer while the assistant is streaming a reply. */
+  disabled?: boolean;
 }
 
 /**
@@ -20,11 +22,12 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   onSubmit,
   onMicPress,
   placeholder = 'Ask anything…',
+  disabled = false,
 }) => {
   const theme = useTheme();
   const [text, setText] = useState('');
   const trimmed = text.trim();
-  const canSend = trimmed.length > 0;
+  const canSend = trimmed.length > 0 && !disabled;
 
   const handleSubmit = useCallback(() => {
     if (!canSend) return;
@@ -58,6 +61,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           onSubmitEditing={handleSubmit}
           returnKeyType="send"
           blurOnSubmit={false}
+          editable={!disabled}
           multiline
           maxLength={500}
         />
