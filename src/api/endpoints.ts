@@ -12,7 +12,15 @@ export const endpoints = {
     me: '/auth/me',
   },
   home: {
-    bootstrap: '/home/bootstrap', // returns user, apps, widgetLayout, apiVersions
+    // MyEK BFF bootstrap (apiClient prepends `/v1` → `/v1/myek/bootstrap`).
+    // Returns user, permissions, apps, widgetLayout, apiVersions, featureFlags
+    // (no session — the frontend supplies that from its MSAL result).
+    bootstrap: '/myek/bootstrap',
+  },
+  ai: {
+    // Backend AI service (SSE). Not behind the MyEK BFF — consumed directly
+    // via the SSE client (axios can't stream). Path is relative to `/v{version}`.
+    chat: '/ai/chat',
   },
   widgets: {
     /** Generic — the WidgetService passes the endpoint from WidgetConfig directly. */

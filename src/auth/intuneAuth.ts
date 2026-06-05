@@ -126,19 +126,17 @@ class MsalIntuneAdapter implements IntuneAdapter {
 
     const session = toSession(result);
 
-    // Exchange the id_token at our backend for the bootstrap payload
-    // (apps, widgets, permissions, apiVersions). If the backend is
-    // unreachable we synthesise a minimal LoginResult from the MSAL claims
-    // so the rest of the app can still hydrate.
+    // Boot from the MyEK BFF (`/v1/myek/bootstrap`): apps, widgets, permissions
+    // assembled from the user's entitlements + JWT identity. The auth store
+    // isn't populated yet, so the token is passed explicitly. With edge-
+    // terminated auth there's no token exchange — the MSAL session is the real
+    // thing. On any failure we synthesise a LoginResult from bundled defaults
+    // so the app still hydrates offline.
     try {
-      const bootstrap = await apiClient.post<LoginResult>(
-        endpoints.auth.login,
-        { idToken: result.idToken, accessToken: result.accessToken },
-        { skipAuth: true },
-      );
-      return { ...bootstrap, session };
+      const bootstrap = await fetchMyekBootstrap(session.accessToken);
+      return myekBootstrapToLoginResult(bootstrap, session);
     } catch (e) {
-      log.warn('Backend /auth/login unreachable — using minimal LoginResult from MSAL claims', e);
+      log.warn('MyEK BFF /v1/myek/bootstrap unreachable — using bundled fallback LoginResult', e);
       return makeBootstrapFromMsal(result, session);
     }
   }
@@ -246,6 +244,76 @@ function toSession(result: MSALResult): AuthSession {
     expiresAt,
     scope: result.scopes ?? config.auth.scope,
   };
+}
+
+/* ────────────────────────────────────────────────────────────
+ * MyEK BFF bootstrap
+ * ──────────────────────────────────────────────────────────── */
+
+/** Raw `/v1/myek/bootstrap` payload — the frontend `LoginResult` minus `session`. */
+export interface MyekBootstrapResult {
+  user: User;
+  permissions: string[];
+  apps: AppConfig[];
+  widgetLayout: WidgetConfig[];
+  apiVersions: Record<string, ApiVersion>;
+  featureFlags: Record<string, boolean>;
+}
+
+/**
+ * Fetch the BFF bootstrap with an explicit bearer — called during sign-in
+ * before the auth store (and therefore the api-client token getter) is
+ * populated, so `skipAuth` + a manual Authorization header are required.
+ */
+async function fetchMyekBootstrap(accessToken: string): Promise<MyekBootstrapResult> {
+  return apiClient.get<MyekBootstrapResult>(endpoints.home.bootstrap, {
+    skipAuth: true,
+    headers: { Authorization: `Bearer ${accessToken}` },
+    retries: 1,
+  });
+}
+
+/**
+ * Project the BFF bootstrap onto the frontend `LoginResult`. Real identity
+ * (id, employeeId, email, name) comes from the JWT-derived `user`; HR-heavy
+ * fields the BFF doesn't yet supply (jobTitle, department, …) keep the bundled
+ * demo values until `userService` (or a richer bootstrap) fills them. Exported
+ * so warm refreshes (`homeService`) reuse the exact same projection.
+ */
+export function myekBootstrapToLoginResult(
+  raw: MyekBootstrapResult,
+  session: AuthSession,
+): LoginResult {
+  return {
+    user: mergeUser(userDefault as User, raw.user),
+    session,
+    permissions: (raw.permissions?.length ? raw.permissions : BASELINE_PERMISSIONS) as Permission[],
+    apps: raw.apps ?? [],
+    widgetLayout: sortWidgetLayout(raw.widgetLayout ?? []),
+    apiVersions: raw.apiVersions ?? {},
+    // Empty/partial flags from the BFF must not disable shipped features.
+    featureFlags: { ...DEFAULT_FLAGS, ...(raw.featureFlags ?? {}) },
+  };
+}
+
+/** Overlay `over` onto `base`, keeping `base` wherever `over` is empty/missing. */
+function mergeUser(base: User, over: Partial<User> | undefined): User {
+  const out: User = { ...base };
+  if (!over) return out;
+  (Object.keys(over) as (keyof User)[]).forEach(key => {
+    const value = over[key];
+    if (value !== undefined && value !== null && value !== '') {
+      (out as unknown as Record<string, unknown>)[key] = value;
+    }
+  });
+  return out;
+}
+
+/** Sort a widget layout by the canonical home-grid order (unknown ids tail). */
+function sortWidgetLayout(configs: WidgetConfig[]): WidgetConfig[] {
+  const rank = new Map<string, number>(DEFAULT_LAYOUT_ORDER.map((id, i) => [id, i]));
+  const tail = DEFAULT_LAYOUT_ORDER.length;
+  return [...configs].sort((a, b) => (rank.get(a.widgetId) ?? tail) - (rank.get(b.widgetId) ?? tail));
 }
 
 /**

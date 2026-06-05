@@ -40,6 +40,12 @@ export const TabNavigator: React.FC = () => {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarShowLabel: true,
+        // Keep inactive tabs mounted instead of freezing them (react-freeze).
+        // With the new architecture + react-native-screens, a frozen screen
+        // occasionally renders blank for a frame (or gets stuck blank) as it
+        // unfreezes on tab switch — the intermittent blank-tab bug. Not
+        // freezing costs a little memory but keeps each tab's tree live.
+        freezeOnBlur: false,
         // Themed scene container so any sub-frame mount gap (or a screen
         // returning null while it waits on a store) shows the app bg, not
         // the navigator's default near-white. This alone covers the
