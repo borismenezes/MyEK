@@ -44,7 +44,11 @@ export const AiAgentScreen: React.FC = () => {
       <StatusBar barStyle="light-content" />
       <AnimatedGradientBanner />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // Android 15+/RN edge-to-edge no longer honors adjustResize, so the bare
+        // window doesn't lift for the keyboard — give Android a real behavior.
+        // iOS keeps 'padding'; Android uses 'height' (shrinks the container so the
+        // bottom-anchored composer rises above the keyboard).
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 84 : 0}
         style={styles.body}>
         <View style={{ paddingTop: 16, paddingBottom: 12 }}>

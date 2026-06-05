@@ -108,9 +108,25 @@ export function wireApiAuth(): void {
     useAuthStore.getState().updateSession(refreshed);
     return refreshed.accessToken;
   });
-  // APIM-backed services request their own per-call token scoped to the API
-  // audience — independent of the sign-in token (which is for identity only).
-  setApimTokenAcquirer(scopes => intuneAdapter.acquireTokenForScopes(scopes));
+  // Single-token model (mirrors enterprise-app): the BFF client uses the SAME
+  // resource-scoped session token as apiClient, read synchronously from the
+  // store. The previous per-call MSAL silent acquisition returned null under
+  // the burst of parallel widget fetches at launch → requests went out with no
+  // Authorization header → Kong 401 → widgets fell back to mocks. Refresh only
+  // when the cached token is actually expired.
+  setApimTokenAcquirer(async () => {
+    const session = useAuthStore.getState().session;
+    if (!session) return null;
+    if (Date.now() >= session.expiresAt) {
+      const refreshed = await intuneAdapter.refresh(session.refreshToken);
+      if (refreshed) {
+        persistSession(refreshed);
+        useAuthStore.getState().updateSession(refreshed);
+        return refreshed.accessToken;
+      }
+    }
+    return session.accessToken;
+  });
 }
 
 export async function signIn(): Promise<LoginResult> {

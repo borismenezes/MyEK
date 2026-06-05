@@ -238,7 +238,12 @@ function toSession(result: MSALResult): AuthSession {
   // on Android — normalise to ms.
   const expiresAt = result.expiresOn < 1e12 ? result.expiresOn * 1000 : result.expiresOn;
   return {
-    accessToken: result.accessToken,
+    // The bearer sent to the backend is the OIDC ID token: this app reg is both
+    // the client and the API audience (aud = client id = our API), so the ID
+    // token validates at the gateway with no custom API scope. The access token
+    // MSAL returns for the built-in scopes is audienced to Graph, not our API,
+    // so it must NOT be used as the bearer.
+    accessToken: result.idToken ?? result.accessToken,
     refreshToken: '', // MSAL manages refresh internally; not exposed to JS
     idToken: result.idToken,
     expiresAt,
