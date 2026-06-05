@@ -42,22 +42,28 @@ const defaultRedirectUri = Platform.select({
 });
 
 // ── enterprise-backend integration defaults ───────────────────────────────
-// The enterprise edge (Kong) terminates auth: it validates the Entra bearer
-// against the Emirates tenant and expects the enterprise-app API audience. We
-// mirror enterprise-app's single-token model — one resource-scoped token
-// (`access_as_user`) is acquired and attached to every call; there is no longer
-// a separate sign-in token. Override any of these via the matching env var.
-const ENTERPRISE_TENANT_ID = '86ba65bc-68d5-4e44-9445-b2b8a7a64d5a';
-const ENTERPRISE_API_SCOPE = 'api://c5bc7a7d-550e-408a-9324-b026a363ddf0/access_as_user';
-// Public host fronted by Kong. Both the versioned `apiClient` (`{host}/v1`) and
-// the MyEK service client point here; all MyEK data is served by the backend
-// BFF under `/v1/myek/**`.
+// Single-token model: MSAL acquires one resource-scoped token
+// (`access_as_user`, aud = the app itself) and attaches it to every call. The
+// gateway validates it against this tenant + audience. Override via env vars.
+// NOTE: this app registration is BOTH the client and the API resource (client
+// id == API audience GUID), in its own tenant.
+const ENTERPRISE_TENANT_ID = 'ec5dcb19-99f8-458f-8964-190ea11e0e70';
+const ENTERPRISE_API_SCOPE = 'api://7db3d509-5698-4a8d-a439-3e48a22cc0c0/access_as_user';
+// Sign-in scope. MSAL must request at least one real (non-reserved) scope —
+// openid/profile/offline_access are reserved and rejected if passed explicitly.
+// We request the default Graph scope `User.Read` (present on every app reg, no
+// Expose-an-API, no admin consent) ONLY to satisfy MSAL, then discard the Graph
+// access token and use the ID token as the bearer (intuneAuth.toSession). The
+// ID token's aud is always our client (7db3d509) — exactly what the gateway
+// validates — so no custom API scope (access_as_user) has to be exposed.
+const ENTERPRISE_SIGNIN_SCOPES = 'https://graph.microsoft.com/User.Read';
+// Public host fronted by the Spring Cloud Gateway. Both the versioned
+// `apiClient` (`{host}/v1`) and the MyEK service client point here; all MyEK
+// data is served by the backend BFF under `/v1/myek/**`.
 const ENTERPRISE_API_HOST = 'https://thon.mohsal.dev';
-// MyEK's Entra app registration (the client). Both platforms use it now — the
-// token's audience is the enterprise-app resource regardless of client, so a
-// single registration serves iOS + Android. Per-environment overrides (e.g. the
-// real Emirates prod app reg) go via INTUNE_CLIENT_ID.
-const ENTERPRISE_CLIENT_ID = '3122181f-0de3-49fc-9903-c081d7305f22';
+// MyEK's Entra app registration (the client; also the API resource). Both
+// platforms use it. Per-environment overrides go via INTUNE_CLIENT_ID.
+const ENTERPRISE_CLIENT_ID = '7db3d509-5698-4a8d-a439-3e48a22cc0c0';
 
 /**
  * Centralised, environment-driven config.
@@ -82,10 +88,10 @@ export const config = {
     tenantId: pick(INTUNE_TENANT_ID, ENTERPRISE_TENANT_ID),
     clientId: pick(INTUNE_CLIENT_ID, ENTERPRISE_CLIENT_ID),
     redirectUri: pick(INTUNE_REDIRECT_URI, defaultRedirectUri),
-    // Single token: the sign-in scope IS the resource API scope, so MSAL issues
-    // one `access_as_user` token (aud = enterprise-app) that Kong accepts and
-    // every call carries. `INTUNE_SCOPE` overrides only if you need extra scopes.
-    scope: pick(INTUNE_SCOPE, ENTERPRISE_API_SCOPE).split(/[ ,]+/).filter(Boolean),
+    // Built-in OIDC scopes only — the ID token (aud = this app = our API) is the
+    // bearer, so no custom API scope needs exposing. `INTUNE_SCOPE` can override
+    // (e.g. to `api://…/access_as_user`) if a real API scope is exposed later.
+    scope: pick(INTUNE_SCOPE, ENTERPRISE_SIGNIN_SCOPES).split(/[ ,]+/).filter(Boolean),
     get authority(): string {
       return `https://login.microsoftonline.com/${this.tenantId}`;
     },

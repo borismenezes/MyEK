@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Dimensions, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -78,15 +78,21 @@ export const LoginScreen: React.FC = () => {
   const setStatus = useAuthStore(s => s.setStatus);
   const [loading, setLoading] = useState(false);
   const [errorKey, setErrorKey] = useState<FriendlyErrorKey | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   const handleSignIn = async () => {
     setLoading(true);
     setErrorKey(null);
+    setErrorDetail(null);
     try {
       await signIn();
     } catch (e) {
       log.error('Sign-in failed', e);
+      // Surface the raw MSAL/AADSTS detail so auth-config failures are
+      // diagnosable on-device (the friendly card alone hides the cause).
+      console.error('[signin] failed:', e);
       setErrorKey(classifyAuthError(e));
+      setErrorDetail(rawErrorDetail(e));
       setStatus('unauthenticated');
     } finally {
       setLoading(false);
@@ -125,6 +131,19 @@ export const LoginScreen: React.FC = () => {
             )}
           </Pressable>
           {errorKey ? <ErrorCard kind={errorKey} /> : null}
+          {errorDetail ? (
+            <Text
+              selectable
+              style={{
+                color: theme.colors.muted,
+                fontSize: 11,
+                fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+                marginTop: 10,
+                textAlign: 'center',
+              }}>
+              {errorDetail}
+            </Text>
+          ) : null}
           <Text style={{ color: theme.colors.muted, fontSize: 11, textAlign: 'center', marginTop: 18 }}>
             By signing in you agree to the Emirates Group acceptable-use policy.
           </Text>
@@ -304,6 +323,26 @@ function classifyAuthError(e: unknown): FriendlyErrorKey {
     return 'denied';
   }
   return 'generic';
+}
+
+/**
+ * Flattens the useful fields out of an MSAL/native error into a single short
+ * string for on-device diagnosis (code · message · AADSTS · correlationId).
+ */
+function rawErrorDetail(e: unknown): string {
+  if (e == null) return 'unknown error';
+  if (typeof e === 'string') return e.slice(0, 600);
+  const any = e as Record<string, unknown>;
+  const parts: string[] = [];
+  for (const k of ['code', 'errorCode', 'subError', 'message', 'errorDescription', 'correlationId']) {
+    const v = any[k];
+    if (v != null && v !== '') parts.push(`${k}=${String(v)}`);
+  }
+  if (any.userInfo != null) {
+    try { parts.push(`userInfo=${JSON.stringify(any.userInfo)}`); } catch { /* ignore */ }
+  }
+  const out = parts.length ? parts.join(' · ') : JSON.stringify(e);
+  return out.slice(0, 600);
 }
 
 const ErrorCard: React.FC<{ kind: FriendlyErrorKey }> = ({ kind }) => {
