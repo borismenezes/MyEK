@@ -13,39 +13,25 @@ import { FaqPills } from './components/FaqPills';
 import { ChatPanel } from './components/ChatPanel';
 import { ChatComposer } from './components/ChatComposer';
 import { AGENT_QUESTIONS } from './data/questions';
-import {
-  buildAgentResponse,
-  buildFreeTextUserMessage,
-  buildGenericAgentReply,
-  buildUserMessage,
-  matchFreeTextToQuestion,
-} from './data/responses';
-import type { AgentMessage, AgentQuestion } from './types';
+import { useAiAgentStore } from './store';
+import type { AgentQuestion } from './types';
 
 /**
- * AI Agent tab — animated gradient banner up top, FAQ pills, then a
- * chat-style transcript that builds up as the user taps prompts or types
- * a question into the composer. All responses are hardcoded for now;
- * replace the `match` / `build…Reply` calls with a real LLM call when a
- * backend is available.
+ * AI Agent tab — animated gradient banner, leave-scoped suggestion pills, and a
+ * chat transcript streamed live from the backend AI service (`/v1/ai/chat`).
+ * Conversation state lives in {@link useAiAgentStore} so it survives tab
+ * switches; the assistant streams token-by-token and keeps thread history
+ * server-side via the conversation id.
  */
 export const AiAgentScreen: React.FC = () => {
   const theme = useTheme();
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const messages = useAiAgentStore(s => s.messages);
+  const isStreaming = useAiAgentStore(s => s.isStreaming);
+  const send = useAiAgentStore(s => s.send);
   const [toastKey, setToastKey] = useState(0);
 
-  const handlePick = useCallback((question: AgentQuestion) => {
-    const user = buildUserMessage(question);
-    const agent = buildAgentResponse(question);
-    setMessages(prev => [...prev, user, agent]);
-  }, []);
-
-  const handleSubmit = useCallback((text: string) => {
-    const user = buildFreeTextUserMessage(text);
-    const match = matchFreeTextToQuestion(text);
-    const agent = match ? buildAgentResponse(match) : buildGenericAgentReply();
-    setMessages(prev => [...prev, user, agent]);
-  }, []);
+  const handlePick = useCallback((question: AgentQuestion) => send(question.prompt), [send]);
+  const handleSubmit = useCallback((text: string) => send(text), [send]);
 
   const handleMicPress = useCallback(() => {
     // Voice input isn't wired yet — surface the standard "coming soon"
@@ -58,7 +44,11 @@ export const AiAgentScreen: React.FC = () => {
       <StatusBar barStyle="light-content" />
       <AnimatedGradientBanner />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // Android 15+/RN edge-to-edge no longer honors adjustResize, so the bare
+        // window doesn't lift for the keyboard — give Android a real behavior.
+        // iOS keeps 'padding'; Android uses 'height' (shrinks the container so the
+        // bottom-anchored composer rises above the keyboard).
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 84 : 0}
         style={styles.body}>
         <View style={{ paddingTop: 16, paddingBottom: 12 }}>
@@ -70,7 +60,8 @@ export const AiAgentScreen: React.FC = () => {
         <ChatComposer
           onSubmit={handleSubmit}
           onMicPress={handleMicPress}
-          placeholder="Ask anything…"
+          disabled={isStreaming}
+          placeholder={isStreaming ? 'Assistant is replying…' : 'Ask about your leave…'}
         />
       </KeyboardAvoidingView>
       <UpcomingFeatureToast

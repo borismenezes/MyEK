@@ -1,33 +1,24 @@
 /**
- * Identifier for the visual answer renderer. `text` is the fallback for any
- * question that doesn't have a pictorial widget bound to it.
+ * A suggestion pill — a canned prompt the user can tap to send to the
+ * assistant. Pills are shortcuts to `prompt`; there's no canned response.
  */
-export type AnswerKind =
-  | 'text'
-  | 'leavePlan'
-  | 'daySummary'
-  | 'jiraSnapshot'
-  | 'meeting';
-
 export interface AgentQuestion {
   id: string;
   /** Short label shown on the FAQ pill (≈3-5 words). */
   pill: string;
-  /** Full prompt the user "asks" when they tap the pill. */
+  /** Full prompt sent to the assistant when the pill is tapped. */
   prompt: string;
-  /** Visual style of the response. */
-  answer: AnswerKind;
-  /** Optional text body — used by `answer: 'text'` and as the lead-in for
-   *  pictorial answers (rendered above the widget card). */
-  text?: string;
 }
 
+/** A single chat message. */
 export interface AgentMessage {
   id: string;
   role: 'user' | 'agent';
-  /** The body for plain text messages. For agent messages with a pictorial
-   *  answer, this is the lead-in text rendered above the widget. */
-  text?: string;
-  /** Pictorial answer renderer key. Only set on agent messages. */
-  answer?: AnswerKind;
+  /** Message body. Empty on an agent message until the first token streams in. */
+  text: string;
+  /**
+   * Agent-message lifecycle: `streaming` while tokens arrive, `done` when the
+   * stream completes, `error` if the turn failed. Absent on user messages.
+   */
+  status?: 'streaming' | 'done' | 'error';
 }

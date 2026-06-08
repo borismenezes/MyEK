@@ -28,6 +28,7 @@
     "react-native-barcode-svg": "^0.0.15",
     "react-native-biometrics": "^3.0.1",
     "react-native-gesture-handler": "^2.31.1",
+    "react-native-markdown-display": "^7.0.2",
     "react-native-mmkv": "^4.3.1",
     "react-native-msal": "^4.0.4",
     "react-native-nitro-modules": "^0.35.6",

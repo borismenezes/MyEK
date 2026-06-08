@@ -3,9 +3,12 @@ import { Text, View } from 'react-native';
 import { useWidgetData } from '@hooks/useWidgetData';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme, widgetTheme } from '@theme/index';
+import { createLogger } from '@utils/logger';
 import { getRegistryEntry } from './WidgetRegistry';
 import { WidgetShell } from './WidgetShell';
 import type { WidgetConfig } from '@/types';
+
+const log = createLogger('Widget/Renderer');
 
 interface WidgetRendererProps {
   config: WidgetConfig;
@@ -59,16 +62,67 @@ const WidgetRendererImpl: React.FC<WidgetRendererProps> = ({ config, preview = f
       isStale={entry.hideStaleIndicator ? false : isStale}
       onRetry={refresh}
       bare={!entry.surface}>
-      <Component
-        config={config}
-        data={data}
-        loading={loading}
-        error={error}
-        isStale={isStale}
-        onRefresh={refresh}
-        preview={preview}
-      />
+      {/* Isolate each widget: a render throw (e.g. a payload field the tile
+          doesn't expect) must degrade to a fallback tile, never crash the
+          whole app. resetKey=data lets a refreshed payload re-attempt render. */}
+      <WidgetErrorBoundary widgetId={config.widgetId} resetKey={data} fallback={<WidgetErrorTile />}>
+        <Component
+          config={config}
+          data={data}
+          loading={loading}
+          error={error}
+          isStale={isStale}
+          onRefresh={refresh}
+          preview={preview}
+        />
+      </WidgetErrorBoundary>
     </WidgetShell>
+  );
+};
+
+/**
+ * Per-widget error boundary. A single tile throwing during render used to take
+ * the whole app down (fatal RN exception, no boundary). This catches it, logs
+ * it, and shows a small fallback. `resetKey` (the widget's data) clears the
+ * error when fresh data arrives so a transient bad payload can recover.
+ */
+interface WidgetErrorBoundaryProps {
+  widgetId: string;
+  resetKey: unknown;
+  fallback: React.ReactNode;
+  children: React.ReactNode;
+}
+
+class WidgetErrorBoundary extends React.Component<WidgetErrorBoundaryProps, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown): void {
+    log.warn(`Widget "${this.props.widgetId}" crashed during render`, error);
+  }
+
+  componentDidUpdate(prev: WidgetErrorBoundaryProps): void {
+    if (this.state.hasError && prev.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render(): React.ReactNode {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
+const WidgetErrorTile: React.FC = () => {
+  const theme = useTheme();
+  return (
+    <View style={{ flex: 1, minHeight: 100, justifyContent: 'center', alignItems: 'center', padding: 12 }}>
+      <Text style={{ fontSize: widgetTheme.fontSize.label, color: theme.colors.muted, textAlign: 'center' }}>
+        Couldn't display this widget.
+      </Text>
+    </View>
   );
 };
 
