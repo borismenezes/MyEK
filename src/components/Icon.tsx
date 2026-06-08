@@ -2,7 +2,7 @@ import React from 'react';
 import Svg, { Path, Rect, Circle, G } from 'react-native-svg';
 import { useTheme } from '@theme/index';
 
-type IconName =
+export type IconName =
   | 'home'
   | 'card'
   | 'user'
@@ -393,3 +393,61 @@ export const Icon: React.FC<IconProps> = ({ name, size = 18, color, stroke = 1.8
       return null;
   }
 };
+
+/**
+ * Every glyph the Icon component can actually draw. Kept in sync with the
+ * `IconName` union above (a name in the union but not here would resolve to a
+ * blank bubble, which is the bug this set exists to prevent).
+ */
+export const ICON_NAMES: ReadonlySet<IconName> = new Set<IconName>([
+  'home', 'card', 'user', 'calendar', 'apps', 'plus', 'check', 'edit', 'plane',
+  'plane-flat', 'gift', 'clock', 'star', 'wallet', 'doc', 'briefcase', 'passport',
+  'meeting', 'timesheet', 'sparkles', 'chevron', 'chevron-down', 'close', 'bell',
+  'cake', 'globe', 'medal', 'mail', 'phone', 'pin', 'building', 'arrow-right',
+  'drag', 'sun', 'moon', 'wifi-off', 'help', 'layers', 'more', 'share', 'roster',
+  'ai-spark', 'mic', 'arrow-up',
+]);
+
+export function isIconName(value: unknown): value is IconName {
+  return typeof value === 'string' && ICON_NAMES.has(value as IconName);
+}
+
+/**
+ * Keyword → glyph map used to recover a professional icon when the backend
+ * sends an icon name this app doesn't ship (or none at all). Keys are matched
+ * as substrings against the app id / supplied icon string, longest first, so
+ * "businessCard" → card, "myTrips" → plane, etc. Keeps the Services tab fully
+ * iconned regardless of what the live manifest provides.
+ */
+const ICON_KEYWORDS: ReadonlyArray<[string, IconName]> = [
+  ['businesscard', 'card'], ['payslip', 'wallet'], ['payroll', 'wallet'],
+  ['appreciation', 'medal'], ['platinum', 'gift'], ['voucher', 'gift'],
+  ['attendance', 'clock'], ['timesheet', 'timesheet'], ['roster', 'roster'],
+  ['document', 'passport'], ['passport', 'passport'], ['trip', 'plane'],
+  ['flight', 'plane'], ['leave', 'calendar'], ['event', 'cake'],
+  ['meeting', 'meeting'], ['outlook', 'meeting'], ['jira', 'layers'],
+  ['ticket', 'layers'], ['application', 'briefcase'], ['profile', 'user'],
+  ['card', 'card'], ['wallet', 'wallet'], ['calendar', 'calendar'],
+  ['mail', 'mail'], ['phone', 'phone'], ['building', 'building'],
+];
+
+/**
+ * Resolve any backend-supplied icon string to a glyph that actually renders.
+ *   1. exact match against a shipped glyph,
+ *   2. keyword match against the icon string and an optional id hint
+ *      (e.g. the appId), longest keyword first,
+ *   3. a neutral, professional default (`apps`).
+ */
+export function resolveIconName(raw: unknown, hint?: string): IconName {
+  if (isIconName(raw)) return raw;
+  const haystack = `${typeof raw === 'string' ? raw : ''} ${hint ?? ''}`.toLowerCase();
+  let best: IconName | null = null;
+  let bestLen = 0;
+  for (const [kw, name] of ICON_KEYWORDS) {
+    if (haystack.includes(kw) && kw.length > bestLen) {
+      best = name;
+      bestLen = kw.length;
+    }
+  }
+  return best ?? 'apps';
+}

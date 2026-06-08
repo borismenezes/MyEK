@@ -6,6 +6,7 @@ export * from './FauxBarcode';
 export * from './Skeleton';
 export * from './OfflineBanner';
 export * from './Card';
+export * from './ErrorBoundary';
 export * from './Pill';
 export * from './ErrorState';
 export * from './DraggableGrid';

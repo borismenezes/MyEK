@@ -11,7 +11,8 @@ import { createLogger } from '@utils/logger';
 import { DEFAULT_FLAGS } from '@utils/featureFlags';
 import manifestDefault from '../services/defaults/applicationsManifest.json';
 import userDefault from '../services/defaults/user.json';
-import { DEFAULT_LAYOUT_ORDER } from '../widgets/WidgetRegistry';
+import { DEFAULT_LAYOUT_ORDER, resolveWidgetSize } from '../widgets/WidgetRegistry';
+import { resolveIconName } from '@components/Icon';
 import type {
   ApiVersion,
   AppConfig,
@@ -438,7 +439,7 @@ function appsFromManifest(entries: AppManifestEntry[]): AppConfig[] {
     .map(e => ({
       appId: e.appName,
       name: e.applicationName,
-      icon: e.icon,
+      icon: resolveIconName(e.icon, e.appName),
       enabled: e.enabled,
       apiVersion: (e.apiVersion ?? 'v1') as ApiVersion,
       widgets: [],
@@ -452,7 +453,7 @@ function widgetLayoutFromManifest(entries: AppManifestEntry[]): WidgetConfig[] {
       widgetId: e.widgetName,
       apiVersion: (e.apiVersion ?? 'v1') as ApiVersion,
       endpoint: e.endpoint ?? '',
-      layout: { size: e.defaultSize },
+      layout: { size: resolveWidgetSize(e.defaultSize, e.widgetName) },
     }));
   // Sort by the canonical home-grid order. Manifest entries (live or
   // bundled) can ship in any sequence; the home grid still renders in the

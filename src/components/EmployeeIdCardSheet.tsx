@@ -28,7 +28,6 @@ const FALLBACK_ELIGIBILITIES: UserEligibility[] = [
 ];
 import Barcode from 'react-native-barcode-svg';
 import { Avatar } from './Avatar';
-import { FauxBarcode } from './FauxBarcode';
 import { Icon } from './Icon';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -42,6 +41,12 @@ const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_PADDING * 2;
 // the card lands within the viewport without scrolling.
 const CARD_ASPECT = 1.4;
 const CARD_HEIGHT = Math.round(CARD_WIDTH * CARD_ASPECT);
+
+// Scannable-barcode palette. Bars must be dark and the panel light for a
+// scanner to read the code (correct polarity + contrast). A warm champagne
+// panel keeps the premium gold feel of the card while staying high-contrast.
+const BARCODE_PANEL = '#F3E9D2';
+const BARCODE_BARS = '#1A1206';
 
 interface EmployeeIdCardSheetProps {
   visible: boolean;
@@ -439,7 +444,20 @@ const FrontFace: React.FC<FrontFaceProps> = ({
         the card height tracks the content tightly — eliminates the dead
         white band that pushed Access & Privileges off-screen. */}
     <View style={{ alignItems: 'center', paddingTop: 4, paddingBottom: 14 }}>
-      <FauxBarcode value={`EK-${employeeId}`} width={Math.min(CARD_WIDTH - 80, 260)} height={52} />
+      {/* Real, scannable CODE128 of the staff ID on a champagne quiet-zone
+          panel (dark bars on light — the only polarity standard scanners
+          read), matched to the front-face barcode strip. */}
+      <View style={{ backgroundColor: BARCODE_PANEL, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 }}>
+        <Barcode
+          value={`EK-${employeeId}`}
+          format="CODE128"
+          maxWidth={Math.min(CARD_WIDTH - 96, 240)}
+          singleBarWidth={2}
+          height={48}
+          lineColor={BARCODE_BARS}
+          backgroundColor={BARCODE_PANEL}
+        />
+      </View>
     </View>
   </View>
 );
@@ -581,15 +599,22 @@ const PortraitPlatinumBack: React.FC<{
             justifyContent: 'center',
           }}>
             <View style={{ transform: [{ rotate: '-90deg' }] }}>
-              <Barcode
-                value={memberIdForBarcode(data.memberId)}
-                format="CODE128"
-                maxWidth={Math.min(CARD_HEIGHT - 80, 360)}
-                singleBarWidth={2}
-                height={48}
-                lineColor={gold}
-                backgroundColor="#0a0a0a"
-              />
+              {/* Dark bars on a warm champagne quiet-zone panel. Barcode
+                  scanners need correct polarity (dark on light) and a light
+                  margin; the previous gold-on-black render was a real CODE128
+                  but couldn't be read. The champagne strip keeps the premium
+                  gold feel while staying high-contrast and scannable. */}
+              <View style={{ backgroundColor: BARCODE_PANEL, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 }}>
+                <Barcode
+                  value={memberIdForBarcode(data.memberId)}
+                  format="CODE128"
+                  maxWidth={Math.min(CARD_HEIGHT - 120, 320)}
+                  singleBarWidth={2}
+                  height={40}
+                  lineColor={BARCODE_BARS}
+                  backgroundColor={BARCODE_PANEL}
+                />
+              </View>
             </View>
           </View>
         ) : null}

@@ -263,7 +263,7 @@ const MarqueeRow: React.FC<{
 // nothing to a user. We classify the exception into one of a handful of
 // human-readable buckets and render a themed alert card.
 
-type FriendlyErrorKey = 'cancelled' | 'network' | 'interaction' | 'denied' | 'generic';
+type FriendlyErrorKey = 'cancelled' | 'network' | 'interaction' | 'denied' | 'config' | 'generic';
 
 interface FriendlyError {
   title: string;
@@ -292,6 +292,11 @@ const FRIENDLY_ERRORS: Record<FriendlyErrorKey, FriendlyError> = {
     body: 'Your Emirates account isn\'t authorised to use MyEK yet. Contact IT support if this looks wrong.',
     icon: 'help',
   },
+  config: {
+    title: 'Sign-in isn\'t set up for this build',
+    body: 'This version of MyEK has a sign-in configuration issue and can\'t complete authentication. This needs a fix from the app team — please contact IT support and share the details below.',
+    icon: 'help',
+  },
   generic: {
     title: "We couldn't sign you in",
     body: 'Something went wrong on our side. Please try again in a moment.',
@@ -300,8 +305,11 @@ const FRIENDLY_ERRORS: Record<FriendlyErrorKey, FriendlyError> = {
 };
 
 function classifyAuthError(e: unknown): FriendlyErrorKey {
-  const raw = e instanceof Error ? `${e.message}` : String(e);
-  const m = raw.toLowerCase();
+  // Match against the message AND the flattened detail (code, errorCode,
+  // userInfo, …) — MSAL native errors carry the useful text in `userInfo`
+  // / `code`, not always in `message`, so message-only matching misses them.
+  const base = e instanceof Error ? e.message : String(e);
+  const m = `${base} ${rawErrorDetail(e)}`.toLowerCase();
   // MSAL -50005 / "user cancelled" / "user closed" — most common in dev.
   if (m.includes('cancel') || m.includes('-50005') || m.includes('user closed')) return 'cancelled';
   // Network / connectivity issues.
@@ -318,6 +326,25 @@ function classifyAuthError(e: unknown): FriendlyErrorKey {
   }
   // MSAL interaction-required / consent prompts.
   if (m.includes('interaction') || m.includes('consent') || m.includes('-50001')) return 'interaction';
+  // App-config faults the user can't fix: redirect-URI / bundle-ID mismatch
+  // (MSAL -50000, internal -42011), invalid client / unauthorized_client, or a
+  // malformed redirect URI. These mean the build's auth registration is wrong,
+  // so we tell the user it's a setup problem rather than "try again". Checked
+  // before `denied` because 'unauthorized_client' would otherwise match the
+  // `unauthorized` substring there and be misclassified as an access issue.
+  if (
+    m.includes('-50000') ||
+    m.includes('-42011') ||
+    m.includes('redirect uri') ||
+    m.includes('redirect_uri') ||
+    m.includes('bundle id') ||
+    m.includes('bundle_id') ||
+    m.includes('unauthorized_client') ||
+    m.includes('invalid_client') ||
+    m.includes('aadsts650')
+  ) {
+    return 'config';
+  }
   // Authorisation / forbidden.
   if (m.includes('forbidden') || m.includes('unauthorized') || m.includes('not authorised') || m.includes('access denied') || m.includes('403')) {
     return 'denied';

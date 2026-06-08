@@ -139,7 +139,7 @@
     "applicationName": "My Trips",
     "widgetName": "myTrips",
     "icon": "plane",
-    "defaultSize": "small",
+    "defaultSize": "large",
     "enabled": true,
     "showInServices": false,
     "showOnHome": true,

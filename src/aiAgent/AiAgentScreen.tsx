@@ -51,11 +51,14 @@ export const AiAgentScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 84 : 0}
         style={styles.body}>
-        <View style={{ paddingTop: 16, paddingBottom: 12 }}>
-          <FaqPills questions={AGENT_QUESTIONS} onPick={handlePick} />
-        </View>
         <View style={{ flex: 1 }}>
           <ChatPanel messages={messages} />
+        </View>
+        {/* Suggestion pills sit directly above the composer as a quick-action
+            row, so they're reachable next to the input rather than stranded
+            under the banner. */}
+        <View style={{ paddingTop: 10, paddingBottom: 8 }}>
+          <FaqPills questions={AGENT_QUESTIONS} onPick={handlePick} />
         </View>
         <ChatComposer
           onSubmit={handleSubmit}

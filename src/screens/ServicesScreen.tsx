@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Card, Icon } from '@components/index';
+import { Card, Icon, resolveIconName } from '@components/index';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme } from '@theme/index';
 
@@ -36,7 +36,7 @@ export const ServicesScreen: React.FC = () => {
               return (
                 <ServiceItem
                   key={app.appId}
-                  icon={app.icon}
+                  icon={resolveIconName(app.icon, app.appId)}
                   title={app.name}
                   divider={idx < apps.length - 1}
                   onPress={detailEntry ? () => navigation.navigate('Detail', { appName: app.appId }) : undefined}

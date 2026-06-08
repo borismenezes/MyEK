@@ -1,5 +1,5 @@
 import { stores, json } from '@utils/storage';
-import { DEFAULT_LAYOUT_ORDER, defaultWidgetLayout, getRegistryEntry } from './WidgetRegistry';
+import { DEFAULT_LAYOUT_ORDER, defaultWidgetLayout, getRegistryEntry, resolveWidgetSize } from './WidgetRegistry';
 import type { AppManifestEntry, WidgetConfig, WidgetSize } from '@/types';
 
 /**
@@ -99,7 +99,7 @@ export function layoutFromManifest(manifest: AppManifestEntry[]): WidgetConfig[]
         applicationName: entry.applicationName,
         apiVersion,
         endpoint,
-        layout: { size: entry.defaultSize },
+        layout: { size: resolveWidgetSize(entry.defaultSize, entry.widgetName) },
         ...(reg.defaultConfig.refreshIntervalMs !== undefined
           ? { refreshIntervalMs: reg.defaultConfig.refreshIntervalMs }
           : {}),
@@ -122,7 +122,16 @@ function sortByCanonicalOrder(configs: WidgetConfig[]): WidgetConfig[] {
 
 export const widgetLayoutStorage = {
   read(): WidgetConfig[] | null {
-    return json.get<WidgetConfig[]>(stores.prefs, KEY);
+    const raw = json.get<WidgetConfig[]>(stores.prefs, KEY);
+    if (!raw) return null;
+    // Self-heal stale persisted sizes: clamp each tile's size to the sizes its
+    // registry entry currently supports. A layout persisted before a widget's
+    // supported sizes changed (e.g. My Trips becoming large-only) would
+    // otherwise keep rendering at the old height until a manual layout reset.
+    return raw.map(c => ({
+      ...c,
+      layout: { ...c.layout, size: resolveWidgetSize(c.layout?.size, c.widgetId) },
+    }));
   },
   write(layout: WidgetConfig[]): void {
     json.set(stores.prefs, KEY, layout);

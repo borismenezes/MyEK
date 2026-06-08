@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { useTheme } from '@theme/index';
 import type { Theme } from '@/types';
@@ -62,8 +62,29 @@ const MessageBubble: React.FC<{ message: AgentMessage }> = ({ message }) => {
   const showTyping = !isUser && message.status === 'streaming' && message.text.length === 0;
   const markdownStyles = useMemo(() => buildMarkdownStyles(theme), [theme]);
 
+  // Entrance "pop": each bubble fades up and scales in from 0.94 → 1 when it
+  // first mounts (i.e. when an answer pops in). Spring gives it a gentle
+  // overshoot. useNativeDriver keeps it off the JS thread so streaming text
+  // updates never stutter the animation.
+  const appear = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(appear, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 7,
+      tension: 70,
+    }).start();
+  }, [appear]);
+  const popStyle = {
+    opacity: appear,
+    transform: [
+      { translateY: appear.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+      { scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
+    ],
+  };
+
   return (
-    <View style={{ alignItems: isUser ? 'flex-end' : 'stretch' }}>
+    <Animated.View style={[{ alignItems: isUser ? 'flex-end' : 'stretch' }, popStyle]}>
       {message.text || showTyping ? (
         <View
           style={{
@@ -99,7 +120,7 @@ const MessageBubble: React.FC<{ message: AgentMessage }> = ({ message }) => {
           )}
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 };
 
@@ -120,6 +141,10 @@ const TypingDots: React.FC<{ color: string }> = ({ color }) => {
 /** Themed markdown styles for assistant replies — tuned to read like a chat bubble. */
 const buildMarkdownStyles = (theme: Theme) => ({
   body: { color: theme.colors.ink, fontSize: 14, lineHeight: 19 },
+  // `textgroup` wraps every run of inline text; setting its colour explicitly
+  // stops the library's default (near-black) from overriding the theme ink in
+  // dark mode, so answers always read in the app's text colour.
+  textgroup: { color: theme.colors.ink },
   paragraph: { marginTop: 0, marginBottom: 8 },
   strong: { fontWeight: '700' as const, color: theme.colors.ink },
   em: { fontStyle: 'italic' as const },

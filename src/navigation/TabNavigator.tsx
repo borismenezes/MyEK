@@ -15,11 +15,21 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen, ServicesScreen, ProfileScreen, MoreScreen } from '@screens/index';
 import { AiAgentScreen } from '@aiAgent/index';
-import { Icon } from '@components/index';
+import { Icon, withErrorBoundary } from '@components/index';
 import { useTheme } from '@theme/index';
 import type { Theme } from '@/types';
 
 const Tab = createBottomTabNavigator();
+
+// Each tab screen is wrapped in an ErrorBoundary so a render throw degrades to
+// a recoverable fallback instead of a blank tab. Defined once at module scope
+// so the wrapped component identity is stable across renders (wrapping inline
+// would remount the screen on every TabNavigator render).
+const HomeTab = withErrorBoundary(HomeScreen, 'Home');
+const ServicesTab = withErrorBoundary(ServicesScreen, 'Services');
+const AiAgentTab = withErrorBoundary(AiAgentScreen, 'AiAgent');
+const ProfileTab = withErrorBoundary(ProfileScreen, 'Profile');
+const MoreTab = withErrorBoundary(MoreScreen, 'More');
 
 /**
  * Bottom tab navigator.
@@ -37,6 +47,13 @@ export const TabNavigator: React.FC = () => {
   const bottomInset = Math.max(insets.bottom, 8);
   return (
     <Tab.Navigator
+      // Keep inactive tab scenes natively attached. With react-native-screens
+      // on the new architecture, a detached scene (esp. the AI Agent tab — it
+      // hosts an infinite reanimated gradient + SVG + a live stream) sometimes
+      // fails to re-attach on tab switch and renders fully blank. Pairing this
+      // with `freezeOnBlur: false` keeps each tab's native + JS tree live, which
+      // is the reliable cure for the intermittent blank-tab bug.
+      detachInactiveScreens={false}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarShowLabel: true,
@@ -91,11 +108,11 @@ export const TabNavigator: React.FC = () => {
         },
         tabBarButton: props => <AnimatedTabButton {...props} theme={theme} />,
       })}>
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Services" component={ServicesScreen} />
-      <Tab.Screen name="AiAgent" component={AiAgentScreen} options={{ tabBarLabel: 'AI Agent' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-      <Tab.Screen name="More" component={MoreScreen} />
+      <Tab.Screen name="Home" component={HomeTab} />
+      <Tab.Screen name="Services" component={ServicesTab} />
+      <Tab.Screen name="AiAgent" component={AiAgentTab} options={{ tabBarLabel: 'AI Agent' }} />
+      <Tab.Screen name="Profile" component={ProfileTab} />
+      <Tab.Screen name="More" component={MoreTab} />
     </Tab.Navigator>
   );
 };

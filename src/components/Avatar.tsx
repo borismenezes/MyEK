@@ -1,8 +1,15 @@
-import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Stop, Rect, Circle, Path } from 'react-native-svg';
+import React, { useMemo } from 'react';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme } from '@theme/index';
+
+/** Derive up-to-two-letter initials from a display name. */
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 interface AvatarProps {
   size?: number;
@@ -26,12 +33,21 @@ interface AvatarProps {
  * store, populated once per session by `authService.loadProfilePicture()`
  * with stale-while-revalidate caching to MMKV — see authService.ts.
  */
-export const Avatar: React.FC<AvatarProps> = ({ size = 44, ring = false }) => {
+export const Avatar: React.FC<AvatarProps> = ({ size = 44, ring = false, name }) => {
   const theme = useTheme();
   const photo = useAuthStore(s => s.photo);
+  const user = useAuthStore(s => s.user);
 
   const hasPhoto = !!photo && photo.base64.length > 0;
   const photoUri = hasPhoto ? `data:${photo.mimeType};base64,${photo.base64}` : null;
+
+  // Professional default when there's no photo: initials on the brand red,
+  // the same convention Microsoft Teams / Outlook use. Personalised and
+  // gender-neutral — unlike a single bundled headshot or a cartoon silhouette.
+  const initials = useMemo(() => {
+    const source = name ?? (user ? `${user.firstName ?? ''} ${user.lastName ?? ''}` : '');
+    return initialsFromName(source);
+  }, [name, user]);
 
   const haloStyle = ring
     ? {
@@ -51,9 +67,13 @@ export const Avatar: React.FC<AvatarProps> = ({ size = 44, ring = false }) => {
           height: size,
           borderRadius: size / 2,
           overflow: 'hidden',
-          backgroundColor: '#D1D5DB',
+          // Brand-red fill backs the initials monogram; covered by the photo
+          // when one is present.
+          backgroundColor: theme.colors.ekRed,
+          alignItems: 'center',
+          justifyContent: 'center',
           // Always-on thin red border per the design system. Stays visible
-          // whether the photo is loaded or the silhouette is rendering.
+          // whether the photo is loaded or the monogram is rendering.
           borderWidth: 1.5,
           borderColor: theme.colors.ekRed,
         },
@@ -63,27 +83,19 @@ export const Avatar: React.FC<AvatarProps> = ({ size = 44, ring = false }) => {
       {hasPhoto && photoUri ? (
         <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
       ) : (
-        <Svg viewBox="0 0 100 100" width="100%" height="100%">
-          <Defs>
-            <LinearGradient id="avg" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0%" stopColor="#E5E7EB" />
-              <Stop offset="100%" stopColor="#9CA3AF" />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100" height="100" fill="url(#avg)" />
-          <Circle cx={50} cy={42} r={18} fill="#F3F4F6" />
-          <Path d="M20 100 C 22 70, 78 70, 80 100 Z" fill="#F3F4F6" />
-          <Path d="M32 36 Q 50 14 68 36 Q 70 30 50 22 Q 30 30 32 36 Z" fill="#4B5563" />
-          <Circle cx={44} cy={44} r={2} fill="#1F2937" />
-          <Circle cx={56} cy={44} r={2} fill="#1F2937" />
-          <Path
-            d="M46 52 Q 50 55 54 52"
-            stroke="#6B7280"
-            strokeWidth={1.6}
-            fill="none"
-            strokeLinecap="round"
-          />
-        </Svg>
+        <Text
+          allowFontScaling={false}
+          style={{
+            color: 'white',
+            fontWeight: '700',
+            // Scale the initials to the avatar; tuned so 2 letters sit
+            // comfortably inside the circle at every size it's used (44–96).
+            fontSize: Math.round(size * 0.4),
+            letterSpacing: 0.5,
+            includeFontPadding: false,
+          }}>
+          {initials || '·'}
+        </Text>
       )}
     </View>
   );

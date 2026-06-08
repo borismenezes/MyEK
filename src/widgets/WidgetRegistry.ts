@@ -151,9 +151,11 @@ export const WidgetRegistry: Record<string, WidgetRegistryEntry> = {
     description: 'Next personal trip / staff travel',
     icon: 'plane',
     component: JourneyCardWidget,
-    supportedSizes: ['small', 'large'],
+    // Large-only so My Trips renders at the same full-width dimensions as
+    // Outlook Meetings / Roster / Appreciations on the home grid.
+    supportedSizes: ['large'],
     surface: true,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/trips/next', size: 'small' },
+    defaultConfig: { apiVersion: 'v1', endpoint: '/trips/next', size: 'large' },
   },
   roster: {
     widgetId: 'roster',
@@ -189,6 +191,28 @@ export const WidgetRegistry: Record<string, WidgetRegistryEntry> = {
 
 export function getRegistryEntry(widgetId: string): WidgetRegistryEntry | null {
   return WidgetRegistry[widgetId] ?? null;
+}
+
+const VALID_SIZES: ReadonlySet<WidgetSize> = new Set<WidgetSize>(['small', 'medium', 'large']);
+
+/**
+ * Resolve the size a widget should render at, guaranteeing the same heights as
+ * the bundled (pre-backend-integration) layout regardless of what the live
+ * manifest sends. The client owns widget presentation:
+ *   1. honour a manifest size ONLY if it's valid AND one this widget supports,
+ *   2. otherwise fall back to the registry's default size (the canonical value),
+ *   3. final guard → 'small'.
+ * This stops a backend that omits `defaultSize` (→ undefined) or sends an
+ * unsupported value from collapsing/inflating a tile's height.
+ */
+export function resolveWidgetSize(raw: unknown, widgetId: string): WidgetSize {
+  const entry = WidgetRegistry[widgetId];
+  const fallback = entry?.defaultConfig.size ?? 'small';
+  if (typeof raw === 'string' && VALID_SIZES.has(raw as WidgetSize)) {
+    const size = raw as WidgetSize;
+    if (!entry || entry.supportedSizes.includes(size)) return size;
+  }
+  return fallback;
 }
 
 /**

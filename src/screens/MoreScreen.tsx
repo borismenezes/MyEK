@@ -10,7 +10,6 @@ import { widgetLayoutStorage } from '@widgets/index';
 import type { ThemeMode } from '@/types';
 
 type SupportIcon = 'help' | 'phone' | 'doc' | 'layers';
-type AppMode = 'full' | 'lite';
 
 interface SupportRow {
   icon: SupportIcon;
@@ -24,7 +23,6 @@ type InfoSheetKind = 'terms' | 'help' | 'hr' | null;
 export const MoreScreen: React.FC = () => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const [appMode, setAppMode] = useState<AppMode>('lite');
   const [infoSheet, setInfoSheet] = useState<InfoSheetKind>(null);
   const themeMode = useThemeStore(s => s.mode);
   const setThemeMode = useThemeStore(s => s.setMode);
@@ -72,7 +70,6 @@ export const MoreScreen: React.FC = () => {
               <SupportItem key={r.title} {...r} divider />
             ))}
             <ThemeRow mode={themeMode} onChange={setThemeMode} />
-            <AppVersionRow mode={appMode} onChange={setAppMode} />
           </Card>
 
           <SectionHeader title="HOME SCREEN" />
@@ -273,38 +270,6 @@ const ThemeRow: React.FC<{ mode: ThemeMode; onChange: (m: ThemeMode) => void }> 
                 borderRadius: 999,
               }}>
               <Text style={{ fontSize: 11, fontWeight: '700', color: active ? 'white' : theme.colors.muted }}>
-                {m[0].toUpperCase() + m.slice(1)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-};
-
-const AppVersionRow: React.FC<{ mode: AppMode; onChange: (m: AppMode) => void }> = ({ mode, onChange }) => {
-  const theme = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, paddingVertical: 12 }}>
-      <View style={[styles.iconBubble, { backgroundColor: theme.colors.bg }]}>
-        <Icon name="layers" size={18} color={theme.colors.muted} />
-      </View>
-      <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>App Version</Text>
-      <View style={{ flexDirection: 'row', backgroundColor: theme.colors.bg, borderRadius: 999, padding: 3 }}>
-        {(['full', 'lite'] as AppMode[]).map(m => {
-          const active = mode === m;
-          return (
-            <Pressable
-              key={m}
-              onPress={() => onChange(m)}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 5,
-                backgroundColor: active ? theme.colors.ekRed : 'transparent',
-                borderRadius: 999,
-              }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: active ? 'white' : theme.colors.muted }}>
                 {m[0].toUpperCase() + m.slice(1)}
               </Text>
             </Pressable>
