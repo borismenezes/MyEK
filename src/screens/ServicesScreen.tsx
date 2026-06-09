@@ -5,25 +5,28 @@ import { useNavigation } from '@react-navigation/native';
 import { Card, Icon, PayslipSheet, resolveIconName } from '@components/index';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme } from '@theme/index';
-import { getRegistryEntry } from '@widgets/index';
+import { DEFAULT_LAYOUT_ORDER, getRegistryEntry } from '@widgets/index';
 
-/** Apps surfaced on the Services tab (curated subset of the home widgets). */
-const SERVICES_APPS = new Set(['leave', 'payslip']);
+/** Home widgets NOT surfaced on the Services tab: the identity card (lives on its
+ * own home widget + the top-right profile avatar) and applications (no detail
+ * surface to open). */
+const SERVICES_HIDDEN = new Set(['businessCard', 'applications']);
 
 /**
- * Services tab — the curated set of apps a user can open here. Each item opens
- * the same surface as tapping its home widget: Leave → its Detail screen,
- * Payslip → the payslip bottom-sheet.
+ * Services tab — mirrors the home widget set (minus the hidden ones). Each item
+ * opens the same surface as tapping its home widget: Payslip → the bottom-sheet,
+ * anything with a detail surface (Leave / Attendance / Timesheet) → its Detail
+ * screen.
  */
 export const ServicesScreen: React.FC = () => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [payslipOpen, setPayslipOpen] = useState(false);
-  // Build the list from the curated set + the widget registry directly — NOT
-  // the bootstrap `apps`, which omits gated apps (e.g. leave), so Leave and
-  // Payslip always appear here.
-  const services = [...SERVICES_APPS]
+  const manifest = useAuthStore(s => s.manifest);
+  // Same set the home grid renders (registry curated order), minus hidden ones.
+  const services = DEFAULT_LAYOUT_ORDER
+    .filter(id => !SERVICES_HIDDEN.has(id))
     .map(id => ({ id, entry: getRegistryEntry(id) }))
     .filter((s): s is { id: string; entry: NonNullable<typeof s.entry> } => s.entry !== null);
 
@@ -43,11 +46,15 @@ export const ServicesScreen: React.FC = () => {
           <Card padded={false}>
             {services.map(({ id, entry }, idx) => {
               // Mirror the home-widget tap: payslip opens the bottom-sheet,
-              // leave opens its Detail screen.
+              // anything with a detail surface opens its Detail screen, and
+              // widgets without one (e.g. applications) stay non-tappable.
+              const detailEntry = manifest.find(m => m.appName === id && m.detail);
               const onPress =
                 id === 'payslip'
                   ? () => setPayslipOpen(true)
-                  : () => navigation.navigate('Detail', { appName: id });
+                  : detailEntry
+                    ? () => navigation.navigate('Detail', { appName: id })
+                    : undefined;
               return (
                 <ServiceItem
                   key={id}
@@ -95,7 +102,7 @@ const ServiceItem: React.FC<ServiceItemProps> = ({ icon, title, divider, onPress
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>{title}</Text>
       </View>
-      <Icon name="chevron" size={14} color={theme.colors.muted} />
+      {onPress ? <Icon name="chevron" size={14} color={theme.colors.muted} /> : null}
     </Pressable>
   );
 };
