@@ -35,7 +35,7 @@ export const LeaveBalanceWidget: React.FC<WidgetProps<LeaveBalancePayload>> = ({
       <Text style={styles.label}>ANNUAL LEAVE</Text>
       <View style={styles.row}>
         <Text style={styles.big}>{remaining}</Text>
-        <Text style={styles.unit}>days remaining</Text>
+        <Text style={styles.unit}>days left</Text>
       </View>
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${pct * 100}%` }]} />
