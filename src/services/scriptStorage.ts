@@ -1,5 +1,7 @@
-import { createMMKV, type MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 import { ScriptManager, type StorageApi } from '@callstack/repack/client';
+
+type MMKVInstance = ReturnType<typeof createMMKV>;
 
 /**
  * MMKV-backed persistent storage for Re.Pack's `ScriptManager`.
@@ -21,9 +23,9 @@ import { ScriptManager, type StorageApi } from '@callstack/repack/client';
  */
 const MMKV_ID = 'mf-script-cache';
 
-let store: MMKV | null = null;
+let store: MMKVInstance | null = null;
 
-function getStore(): MMKV {
+function getStore(): MMKVInstance {
   if (!store) {
     store = createMMKV({ id: MMKV_ID });
   }
@@ -38,7 +40,7 @@ export const scriptStorage: StorageApi = {
     getStore().set(key, value);
   },
   async removeItem(key: string): Promise<void> {
-    getStore().delete(key);
+    getStore().remove(key);
   },
 };
 
