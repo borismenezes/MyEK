@@ -152,8 +152,10 @@ export const config = {
     otaBaseUrl: apiBaseUrl,
     // Hostname allowlist for remote manifest URLs (release builds). Empty → skip.
     allowedRemoteHosts: [] as string[],
-    // Master switch for the federated-remote boot path. Flip on in P2.
-    enabled: false,
+    // Master switch for the federated-remote path. ON in P2: the `leave` widget
+    // loads from OTA, gracefully falling back to the in-host BalanceMeterWidget
+    // until the remote bundle is live (and on any load failure).
+    enabled: true,
   },
 } as const;
 

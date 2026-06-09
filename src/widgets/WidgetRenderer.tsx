@@ -4,6 +4,7 @@ import { useWidgetData } from '@hooks/useWidgetData';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme, widgetTheme } from '@theme/index';
 import { createLogger } from '@utils/logger';
+import { getFederatedWidgetComponent } from '@services/federation/FederatedWidget';
 import { getRegistryEntry } from './WidgetRegistry';
 import { WidgetShell } from './WidgetShell';
 import type { WidgetConfig } from '@/types';
@@ -52,7 +53,11 @@ const WidgetRendererImpl: React.FC<WidgetRendererProps> = ({ config, preview = f
   if (!entry) return <UnknownWidget widgetId={config.widgetId} />;
   if (!hasPermission) return null;
 
-  const Component = entry.component;
+  // If this widget is delivered by a federated remote, render the federated
+  // component (which falls back to the in-host one while loading / on failure).
+  // Skipped in preview (edit drawer) to avoid remote loads there.
+  const Component =
+    (!preview && getFederatedWidgetComponent(config.widgetId, entry.component)) || entry.component;
 
   return (
     <WidgetShell
