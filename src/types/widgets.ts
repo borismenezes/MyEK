@@ -101,7 +101,7 @@ export interface AppManifestEntry {
  * renderer keyed by `layout` in `screens/detail/DetailLayoutRegistry`, and
  * referenced from the manifest entry — no per-app screen wiring required.
  */
-export type AppDetailLayout = 'list' | 'vouchers' | 'attendanceWeek' | 'timesheetLog';
+export type AppDetailLayout = 'list' | 'attendanceWeek' | 'timesheetLog';
 
 /** A single line item billed against a story / Jira / taxonomy. */
 export interface TimesheetEntry {

@@ -127,19 +127,29 @@ class MsalIntuneAdapter implements IntuneAdapter {
 
     const session = toSession(result);
 
+    // The signed-in account's own ID-token claims are the source of truth for
+    // the displayed identity (name / email). The BFF bootstrap may not echo
+    // them (e.g. no `name` claim reaches the backend), which would otherwise
+    // leave the greeting on the bundled demo name.
+    const identity = identityFromIdToken(session.idToken);
+
     // Boot from the MyEK BFF (`/v1/myek/bootstrap`): apps, widgets, permissions
     // assembled from the user's entitlements + JWT identity. The auth store
     // isn't populated yet, so the token is passed explicitly. With edge-
     // terminated auth there's no token exchange — the MSAL session is the real
     // thing. On any failure we synthesise a LoginResult from bundled defaults
     // so the app still hydrates offline.
+    let loginResult: LoginResult;
     try {
       const bootstrap = await fetchMyekBootstrap(session.accessToken);
-      return myekBootstrapToLoginResult(bootstrap, session);
+      loginResult = myekBootstrapToLoginResult(bootstrap, session);
     } catch (e) {
       log.warn('MyEK BFF /v1/myek/bootstrap unreachable — using bundled fallback LoginResult', e);
-      return makeBootstrapFromMsal(result, session);
+      loginResult = makeBootstrapFromMsal(result, session);
     }
+    // Real name/email from the logged-in account wins over the bundled default.
+    loginResult.user = mergeUser(loginResult.user, identity);
+    return loginResult;
   }
 
   async refresh(_refreshToken: string): Promise<AuthSession | null> {
@@ -302,8 +312,62 @@ export function myekBootstrapToLoginResult(
   };
 }
 
+/** Decode a JWT payload (display only — no signature verification). */
+function decodeJwtClaims(jwt: string | undefined): Record<string, unknown> {
+  if (!jwt) return {};
+  try {
+    const payload = jwt.split('.')[1];
+    if (!payload) return {};
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+    const bin = atob(b64 + pad);
+    const json = decodeURIComponent(
+      bin
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(''),
+    );
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Real identity (name / email / employeeId) decoded from the signed-in user's
+ * ID token, so the home greeting + business card reflect the logged-in user
+ * rather than the bundled demo persona. If the token carries no `name` claim,
+ * a display name is derived from the email local part ("manoj.lalwani" →
+ * "Manoj Lalwani") so it's still clearly the signed-in user.
+ */
+export function identityFromIdToken(idToken: string | undefined): Partial<User> {
+  const claims = decodeJwtClaims(idToken);
+  const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+  const identity: Partial<User> = {};
+
+  const email = str(claims.preferred_username) || str(claims.email) || str(claims.upn);
+  if (email) identity.email = email;
+
+  let fullName = str(claims.name);
+  if (!fullName && email) {
+    fullName = email
+      .split('@')[0]
+      .replace(/[._-]+/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+      .trim();
+  }
+  if (fullName) {
+    const sp = fullName.indexOf(' ');
+    identity.firstName = sp < 0 ? fullName : fullName.slice(0, sp);
+    identity.lastName = sp < 0 ? '' : fullName.slice(sp + 1).trim();
+  }
+  const employeeId = str(claims.employee_id) || str(claims.oid);
+  if (employeeId) identity.employeeId = employeeId;
+  return identity;
+}
+
 /** Overlay `over` onto `base`, keeping `base` wherever `over` is empty/missing. */
-function mergeUser(base: User, over: Partial<User> | undefined): User {
+export function mergeUser(base: User, over: Partial<User> | undefined): User {
   const out: User = { ...base };
   if (!over) return out;
   (Object.keys(over) as (keyof User)[]).forEach(key => {

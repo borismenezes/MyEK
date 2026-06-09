@@ -17,4 +17,3 @@ export * from './leaveService';
 export * from './businessCardService';
 export * from './attendanceService';
 export * from './payslipService';
-export * from './platinumVouchersService';

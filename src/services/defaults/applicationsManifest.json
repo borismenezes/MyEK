@@ -1,17 +1,5 @@
 [
   {
-    "appName": "events",
-    "applicationName": "Today's Events",
-    "widgetName": "events",
-    "icon": "cake",
-    "defaultSize": "large",
-    "enabled": true,
-    "showInServices": false,
-    "showOnHome": true,
-    "apiVersion": "v1",
-    "endpoint": "/events/today"
-  },
-  {
     "appName": "businessCard",
     "applicationName": "Business Card",
     "widgetName": "businessCard",
@@ -87,30 +75,6 @@
     }
   },
   {
-    "appName": "documents",
-    "applicationName": "Documents",
-    "widgetName": "documents",
-    "icon": "passport",
-    "defaultSize": "small",
-    "enabled": true,
-    "showInServices": false,
-    "showOnHome": true,
-    "apiVersion": "v1",
-    "endpoint": "/documents/next-expiry"
-  },
-  {
-    "appName": "appreciations",
-    "applicationName": "Appreciations",
-    "widgetName": "appreciations",
-    "icon": "medal",
-    "defaultSize": "large",
-    "enabled": true,
-    "showInServices": false,
-    "showOnHome": true,
-    "apiVersion": "v1",
-    "endpoint": "/appreciations/latest"
-  },
-  {
     "appName": "applications",
     "applicationName": "Applications",
     "widgetName": "applications",
@@ -121,70 +85,5 @@
     "showOnHome": true,
     "apiVersion": "v1",
     "endpoint": "/applications/summary"
-  },
-  {
-    "appName": "roster",
-    "applicationName": "Cabin Crew Roster",
-    "widgetName": "roster",
-    "icon": "roster",
-    "defaultSize": "large",
-    "enabled": true,
-    "showInServices": false,
-    "showOnHome": true,
-    "apiVersion": "v1",
-    "endpoint": "/roster/week"
-  },
-  {
-    "appName": "myTrips",
-    "applicationName": "My Trips",
-    "widgetName": "myTrips",
-    "icon": "plane",
-    "defaultSize": "large",
-    "enabled": true,
-    "showInServices": false,
-    "showOnHome": true,
-    "apiVersion": "v1",
-    "endpoint": "/trips/next"
-  },
-  {
-    "appName": "platinumVouchers",
-    "applicationName": "Platinum Vouchers",
-    "widgetName": "platinumVouchers",
-    "icon": "gift",
-    "defaultSize": "large",
-    "enabled": true,
-    "showInServices": true,
-    "showOnHome": false,
-    "apiVersion": "v1",
-    "endpoint": "/platinum/vouchers",
-    "detail": {
-      "layout": "vouchers",
-      "apiVersion": "v1",
-      "endpoint": "/platinum/vouchers"
-    }
-  },
-  {
-    "appName": "jiraTickets",
-    "applicationName": "Jira Tickets",
-    "widgetName": "jiraTickets",
-    "icon": "layers",
-    "defaultSize": "small",
-    "enabled": true,
-    "showInServices": false,
-    "showOnHome": true,
-    "apiVersion": "v1",
-    "endpoint": "/jira/tickets"
-  },
-  {
-    "appName": "outlookMeetings",
-    "applicationName": "Outlook Meetings",
-    "widgetName": "outlookMeetings",
-    "icon": "meeting",
-    "defaultSize": "large",
-    "enabled": true,
-    "showInServices": false,
-    "showOnHome": true,
-    "apiVersion": "v1",
-    "endpoint": "/outlook/meetings/today"
   }
 ]

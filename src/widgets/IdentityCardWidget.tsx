@@ -13,6 +13,7 @@ import { captureRef } from 'react-native-view-shot';
 import { Avatar, Icon } from '@components/index';
 import { platinumService } from '@services/platinumService';
 import { vCardService } from '@services/vCardService';
+import { useAuthStore } from '@store/useAuthStore';
 import { useTheme, widgetTheme } from '@theme/index';
 import type { BusinessCardPayload, PlatinumCardPayload, WidgetProps } from '@/types';
 
@@ -153,18 +154,24 @@ const ShareIconButton: React.FC<{ onPress: () => void }> = ({ onPress }) => (
 
 const FrontFace: React.FC<{ data: BusinessCardPayload }> = ({ data }) => {
   const theme = useTheme();
+  const user = useAuthStore(s => s.user);
+  // The card belongs to the signed-in user — prefer the logged-in identity for
+  // name/email over whatever the card payload (or its bundled default) carries.
+  const fullName =
+    user && (user.firstName || user.lastName) ? `${user.firstName} ${user.lastName}`.trim() : data.fullName;
+  const email = user?.email || data.email;
   // vCard payload so the QR triggers "Add to Contacts" on iOS Camera /
   // Google Lens when scanned. Rebuilt only when the underlying card data
   // changes — the QR grid is expensive to re-render otherwise.
   const vCard = useMemo(
     () => vCardService.build({
-      fullName: data.fullName,
+      fullName,
       organization: data.organization,
       jobTitle: data.jobTitle,
       phone: data.phone,
-      email: data.email,
+      email,
     }),
-    [data.fullName, data.organization, data.jobTitle, data.phone, data.email],
+    [fullName, data.organization, data.jobTitle, data.phone, email],
   );
   return (
     <View style={{ flex: 1 }}>
@@ -174,7 +181,7 @@ const FrontFace: React.FC<{ data: BusinessCardPayload }> = ({ data }) => {
           <Avatar size={48} ring />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={{ fontSize: widgetTheme.fontSize.titleSm, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.ink }} numberOfLines={1}>
-              {data.fullName}
+              {fullName}
             </Text>
             <Text style={{ fontSize: widgetTheme.fontSize.label, color: theme.colors.muted }} numberOfLines={1}>
               {data.jobTitle}
@@ -198,7 +205,7 @@ const FrontFace: React.FC<{ data: BusinessCardPayload }> = ({ data }) => {
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
               <Icon name="mail" size={12} color={theme.colors.ekRedDark} />
               <Text style={{ fontSize: widgetTheme.fontSize.label, color: theme.colors.inkSecondary }} numberOfLines={1}>
-                {data.email}
+                {email}
               </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>

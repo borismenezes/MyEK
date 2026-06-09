@@ -1,21 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Card, Icon, resolveIconName } from '@components/index';
+import { Card, Icon, PayslipSheet, resolveIconName } from '@components/index';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme } from '@theme/index';
+import { getRegistryEntry } from '@widgets/index';
+
+/** Apps surfaced on the Services tab (curated subset of the home widgets). */
+const SERVICES_APPS = new Set(['leave', 'payslip']);
 
 /**
- * Services tab — lists every internal app the user has access to.
- * Driven by `apps` from the auth bootstrap, so the server controls the catalogue.
+ * Services tab — the curated set of apps a user can open here. Each item opens
+ * the same surface as tapping its home widget: Leave → its Detail screen,
+ * Payslip → the payslip bottom-sheet.
  */
 export const ServicesScreen: React.FC = () => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const apps = useAuthStore(s => s.apps).filter(a => a.enabled);
-  const manifest = useAuthStore(s => s.manifest);
+  const [payslipOpen, setPayslipOpen] = useState(false);
+  // Build the list from the curated set + the widget registry directly — NOT
+  // the bootstrap `apps`, which omits gated apps (e.g. leave), so Leave and
+  // Payslip always appear here.
+  const services = [...SERVICES_APPS]
+    .map(id => ({ id, entry: getRegistryEntry(id) }))
+    .filter((s): s is { id: string; entry: NonNullable<typeof s.entry> } => s.entry !== null);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -29,23 +39,30 @@ export const ServicesScreen: React.FC = () => {
 
       <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 110 }}>
         <View style={{ paddingHorizontal: 16, gap: 10 }}>
-          <SectionHeader title={`${apps.length} APPS AVAILABLE`} />
+          <SectionHeader title={`${services.length} APPS AVAILABLE`} />
           <Card padded={false}>
-            {apps.map((app, idx) => {
-              const detailEntry = manifest.find(m => m.appName === app.appId && m.detail);
+            {services.map(({ id, entry }, idx) => {
+              // Mirror the home-widget tap: payslip opens the bottom-sheet,
+              // leave opens its Detail screen.
+              const onPress =
+                id === 'payslip'
+                  ? () => setPayslipOpen(true)
+                  : () => navigation.navigate('Detail', { appName: id });
               return (
                 <ServiceItem
-                  key={app.appId}
-                  icon={resolveIconName(app.icon, app.appId)}
-                  title={app.name}
-                  divider={idx < apps.length - 1}
-                  onPress={detailEntry ? () => navigation.navigate('Detail', { appName: app.appId }) : undefined}
+                  key={id}
+                  icon={resolveIconName(entry.icon, id)}
+                  title={entry.name}
+                  divider={idx < services.length - 1}
+                  onPress={onPress}
                 />
               );
             })}
           </Card>
         </View>
       </ScrollView>
+
+      <PayslipSheet visible={payslipOpen} onClose={() => setPayslipOpen(false)} />
     </View>
   );
 };
