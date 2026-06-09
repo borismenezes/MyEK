@@ -20,6 +20,34 @@ export interface ChatStreamHandle {
 }
 
 /**
+ * Map a raw transport/stream error into a calm, user-facing line. Rate limits
+ * (429) are the common one — the assistant should ask the user to wait rather
+ * than surface "TOO_MANY_REQUESTS 429".
+ */
+function friendlyAiError(raw: string): string {
+  const s = (raw || '').toLowerCase();
+  if (
+    s.includes('429') ||
+    s.includes('too_many_requests') ||
+    s.includes('too many requests') ||
+    s.includes('rate limit') ||
+    s.includes('rate_limit')
+  ) {
+    return "I'm getting a lot of requests right now — please wait a few seconds and try again.";
+  }
+  if (s.includes('overloaded') || s.includes('503') || s.includes('502') || s.includes('500')) {
+    return 'The assistant is busy at the moment. Please try again shortly.';
+  }
+  if (s.includes('401') || s.includes('unauthor') || s.includes('forbidden') || s.includes('403')) {
+    return 'Your session has expired. Please sign in again.';
+  }
+  if (s.includes('network') || s.includes('failed') || s.includes('timeout') || s.includes('timed out')) {
+    return 'Could not reach the assistant. Please check your connection and try again.';
+  }
+  return 'Sorry, something went wrong. Please try again.';
+}
+
+/**
  * Streams one assistant turn from the backend AI service
  * (`POST /v1/ai/chat`, SSE). The server keeps conversation history keyed by
  * `conversationId` + the signed-in user, so only the new message is sent.
@@ -64,14 +92,14 @@ export function streamChat(
       if (typeof event.token === 'string') {
         handlers.onToken(event.token);
       } else if (event.error) {
-        finish(() => handlers.onError(String(event.error)));
+        finish(() => handlers.onError(friendlyAiError(String(event.error))));
       } else if (event.done) {
         finish(() => handlers.onDone(event.conversationId ?? null));
       }
     },
     onError: err => {
       log.warn('AI stream transport error', err);
-      finish(() => handlers.onError('Could not reach the assistant. Please try again.'));
+      finish(() => handlers.onError(friendlyAiError(err?.message ?? '')));
     },
     onClose: () => {
       // Closed without a terminal token/error frame.

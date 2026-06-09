@@ -1,12 +1,10 @@
 import { apiClient } from '@api/client';
 import { useAuthStore } from '@store/useAuthStore';
 import { leaveDetailsService } from '@services/leaveDetailsService';
-import { platinumVouchersService } from '@services/platinumVouchersService';
 import { attendanceDetailsService } from '@services/attendanceDetailsService';
 import { timesheetDetailsService } from '@services/timesheetDetailsService';
 import { createLogger } from '@utils/logger';
 import leaveDetails from './defaults/leaveDetails.json';
-import platinumVouchers from './defaults/platinumVouchers.json';
 import attendanceDetails from './defaults/attendanceDetails.json';
 import timesheetDetails from './defaults/timesheetDetails.json';
 import type { ApiVersion } from '@/types';
@@ -22,7 +20,6 @@ const log = createLogger('Service/AppDetail');
  */
 const BUNDLED_DEFAULTS: Record<string, unknown> = {
   leave: leaveDetails,
-  platinumVouchers: platinumVouchers,
   attendance: attendanceDetails,
   timesheet: timesheetDetails,
 };
@@ -59,9 +56,6 @@ async function fetchAppDetail<T>(appName: string, options: FetchOptions = {}): P
       const employeeId = useAuthStore.getState().user?.employeeId;
       if (!employeeId) throw new Error('Leave detail requires a signed-in user with employeeId');
       return (await leaveDetailsService.fetch(employeeId)) as unknown as T;
-    }
-    if (appName === 'platinumVouchers') {
-      return (await platinumVouchersService.fetch()) as unknown as T;
     }
     if (appName === 'attendance') {
       const employeeId = useAuthStore.getState().user?.employeeId;

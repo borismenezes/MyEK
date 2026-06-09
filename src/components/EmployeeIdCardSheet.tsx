@@ -27,6 +27,8 @@ const FALLBACK_ELIGIBILITIES: UserEligibility[] = [
   { label: 'Premium lounge access', tone: 'gold' },
 ];
 import Barcode from 'react-native-barcode-svg';
+import QRCode from 'react-native-qrcode-svg';
+import { vCardService } from '@services/vCardService';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 
@@ -36,10 +38,10 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // driven from width so the front/back faces match perfectly for the flip.
 const CARD_HORIZONTAL_PADDING = 16;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_PADDING * 2;
-// Portrait — sized to JUST hold the front-face content (photo + info rows
-// + barcode). Lower than before so the Access & Privileges section below
-// the card lands within the viewport without scrolling.
-const CARD_ASPECT = 1.4;
+// Portrait — sized to hold the front-face content (photo + info rows + the
+// vCard QR). Taller than the old barcode layout so the QR isn't clipped; the
+// sheet scrolls if the Access & Privileges section lands below the fold.
+const CARD_ASPECT = 1.55;
 const CARD_HEIGHT = Math.round(CARD_WIDTH * CARD_ASPECT);
 
 // Scannable-barcode palette. Bars must be dark and the panel light for a
@@ -373,7 +375,10 @@ const FrontFace: React.FC<FrontFaceProps> = ({
   ink,
   muted,
   mutedStrong,
-}) => (
+}) => {
+  // vCard so the QR is a scannable business card ("Add to Contacts").
+  const vCard = vCardService.build({ fullName, organization: company, jobTitle, phone: '', email });
+  return (
   <View style={[styles.cardBody, { backgroundColor: surface }]}>
     <View style={[styles.accentStripe, { backgroundColor: accent }]} />
 
@@ -440,27 +445,16 @@ const FrontFace: React.FC<FrontFaceProps> = ({
 
     <View style={[styles.divider, { backgroundColor: line }]} />
 
-    {/* Barcode sits flush under the divider (no `marginTop: 'auto'`) so
-        the card height tracks the content tightly — eliminates the dead
-        white band that pushed Access & Privileges off-screen. */}
-    <View style={{ alignItems: 'center', paddingTop: 4, paddingBottom: 14 }}>
-      {/* Real, scannable CODE128 of the staff ID on a champagne quiet-zone
-          panel (dark bars on light — the only polarity standard scanners
-          read), matched to the front-face barcode strip. */}
-      <View style={{ backgroundColor: BARCODE_PANEL, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 }}>
-        <Barcode
-          value={`EK-${employeeId}`}
-          format="CODE128"
-          maxWidth={Math.min(CARD_WIDTH - 96, 240)}
-          singleBarWidth={2}
-          height={48}
-          lineColor={BARCODE_BARS}
-          backgroundColor={BARCODE_PANEL}
-        />
+    {/* Business-card vCard QR (replaces the staff-ID barcode) — scanning it
+        adds the contact, so the ID card doubles as the digital business card. */}
+    <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 16 }}>
+      <View style={{ backgroundColor: surface, borderRadius: 12, padding: 10 }}>
+        <QRCode value={vCard} size={140} color={ink} backgroundColor={surface} />
       </View>
     </View>
   </View>
-);
+  );
+};
 
 const InfoRow: React.FC<{
   label: string;

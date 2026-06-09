@@ -1,4 +1,4 @@
-import { intuneAdapter } from './intuneAuth';
+import { identityFromIdToken, intuneAdapter, mergeUser } from './intuneAuth';
 import { useAuthStore } from '@store/useAuthStore';
 import { versionRegistry, setAccessTokenGetter, setUnauthorizedHandler } from '@api/index';
 import { setApimTokenAcquirer } from '@api/apimClient';
@@ -52,6 +52,14 @@ export async function hydrateAuth(): Promise<boolean> {
   // Restore everything to memory before any API call goes out.
   versionRegistry.set(bootstrap.apiVersions);
   useAuthStore.getState().bootstrapFromCache(session, bootstrap);
+
+  // Re-derive the displayed identity from the cached ID token so a stale cached
+  // user (or one whose name never resolved) shows the logged-in user — no
+  // re-sign-in required.
+  const cachedUser = useAuthStore.getState().user;
+  if (cachedUser) {
+    useAuthStore.getState().setUser(mergeUser(cachedUser, identityFromIdToken(session.idToken)));
+  }
 
   // Fetch the profile picture once per session — fire and forget, the
   // Avatar component falls back to its SVG silhouette while the call is
@@ -156,7 +164,11 @@ async function refreshUserProfile(): Promise<void> {
   if (!employeeId) return;
   try {
     const fresh = await userService.fetch(employeeId);
-    useAuthStore.getState().setUser(fresh);
+    // Merge (don't replace): keep the signed-in account's name + the bundled HR
+    // fields wherever the API doesn't supply a value, so a sparse /user payload
+    // can't blank the greeting name or job title.
+    const current = useAuthStore.getState().user;
+    useAuthStore.getState().setUser(current ? mergeUser(current, fresh) : fresh);
     log.debug('User profile refreshed from API');
   } catch (e) {
     log.warn('Background user-profile refresh failed', e);
