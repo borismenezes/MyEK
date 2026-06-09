@@ -1,0 +1,12 @@
+{
+  "name": "@myek/leave",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MyEK Leave mini-app — screens + widgets, federated as the `leave` MF2 remote.",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./screens": "./src/screens/index.ts",
+    "./widgets": "./src/widgets/index.ts"
+  }
+}
