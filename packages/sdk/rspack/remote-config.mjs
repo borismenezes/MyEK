@@ -10,6 +10,7 @@ import path from 'node:path';
 import * as Repack from '@callstack/repack';
 import rspack from '@rspack/core';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
+import { MfIntegrityPlugin } from './mf-integrity-plugin.mjs';
 import { loadBuildEnv } from './load-env.mjs';
 
 // Host-provided singletons (import:false) — the host bundles these eagerly and
@@ -143,6 +144,10 @@ export function buildRemoteRspackConfig({ appsDir, serviceId, mfName, uniqueName
           ],
         }),
         new rspack.IgnorePlugin({ resourceRegExp: /^@react-native-masked-view/ }),
+        // Per-chunk SHA-256 into mf-manifest.json so the host can detect a
+        // rebuilt remote and evict its (URL-keyed) chunk cache → OTA updates
+        // actually reach devices. Must run after the MF plugin emits the manifest.
+        new MfIntegrityPlugin(),
       ],
     };
   });
