@@ -22,6 +22,8 @@ export function PlatformBridge(): null {
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
+            jobTitle: user.jobTitle,
+            organization: 'Emirates Group',
             photoUri: photo && photo.base64 ? `data:${photo.mimeType};base64,${photo.base64}` : undefined,
           }
         : null,

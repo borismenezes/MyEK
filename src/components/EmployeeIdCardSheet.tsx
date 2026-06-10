@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, type ComponentProps } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -15,22 +15,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { platinumService } from '@services/platinumService';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme } from '@theme/index';
-import type { PlatinumCardPayload, UserEligibility } from '@/types';
-
-/**
- * Fallback access pills shown when the signed-in user object doesn't
- * carry an `eligibilities` array (e.g. cached from before the field was
- * added). Keeps the ID card useful even on stale auth data.
- */
-const FALLBACK_ELIGIBILITIES: UserEligibility[] = [
-  { label: 'Eligible to access phone at DXB Airport', tone: 'gold' },
-  { label: 'Premium lounge access', tone: 'gold' },
-];
+import type { PlatinumCardPayload } from '@/types';
 import Barcode from 'react-native-barcode-svg';
 import QRCode from 'react-native-qrcode-svg';
 import { vCardService } from '@services/vCardService';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
+import { config as appConfig } from '@config/index';
+import { useCatalogStore } from '@store/useCatalogStore';
+import { FederatedRemote } from '@services/federation/FederatedRemote';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,15 +31,13 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // driven from width so the front/back faces match perfectly for the flip.
 const CARD_HORIZONTAL_PADDING = 16;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_PADDING * 2;
-// Portrait — sized to hold the front-face content (photo + info rows + the
-// vCard QR). Taller than the old barcode layout so the QR isn't clipped; the
-// sheet scrolls if the Access & Privileges section lands below the fold.
-const CARD_ASPECT = 1.55;
+// Portrait — sized to hold the business-card front (photo + identity + contact
+// rows + the vCard QR below). Kept tall so the Platinum back has room too.
+const CARD_ASPECT = 1.5;
 const CARD_HEIGHT = Math.round(CARD_WIDTH * CARD_ASPECT);
 
-// Scannable-barcode palette. Bars must be dark and the panel light for a
-// scanner to read the code (correct polarity + contrast). A warm champagne
-// panel keeps the premium gold feel of the card while staying high-contrast.
+// Scannable-barcode palette (Platinum back). Bars dark, panel light so a
+// scanner reads it (correct polarity + contrast); champagne keeps the gold feel.
 const BARCODE_PANEL = '#F3E9D2';
 const BARCODE_BARS = '#1A1206';
 
@@ -56,17 +47,12 @@ interface EmployeeIdCardSheetProps {
 }
 
 /**
- * Bottom-sheet overlay that reveals the user's Employee ID card.
+ * Bottom-sheet overlay that reveals the user's digital **Business Card**.
  *
- * Triggered by tapping a profile photo (HomeScreen, ProfileScreen). The
- * sheet animates from the bottom with a spring; the card itself flips
- * 3-D-style on tap to reveal the Platinum card on the back — same
- * pattern as the Business Card widget on the home screen, sized for
- * portrait so it fits behind the ID front.
- *
- * Visual language matches the Business Card widget: white surface with
- * a red accent stripe on the front, dark "Platinum" surface with gold
- * accents on the back.
+ * Triggered by tapping the Business Card widget / profile photo. The front is
+ * the same business card shown on the home grid (avatar, identity, contact)
+ * with the scannable vCard QR placed below the contact rows; tapping the card
+ * flips it to reveal the Emirates Platinum card on the back.
  */
 export const EmployeeIdCardSheet: React.FC<EmployeeIdCardSheetProps> = ({ visible, onClose }) => {
   const theme = useTheme();
@@ -94,7 +80,7 @@ export const EmployeeIdCardSheet: React.FC<EmployeeIdCardSheetProps> = ({ visibl
   }, [visible, progress]);
 
   // Reset to the front whenever the sheet closes — opening fresh always
-  // shows the ID side first.
+  // shows the business-card side first.
   useEffect(() => {
     if (!visible) {
       flipProgress.value = withTiming(0, { duration: 0 });
@@ -150,12 +136,10 @@ export const EmployeeIdCardSheet: React.FC<EmployeeIdCardSheetProps> = ({ visibl
 
   const fullName = `${user.firstName} ${user.lastName}`.trim();
   const company = 'Emirates Group';
-  // Always show pills — fall back to the bundled defaults so the section
-  // never disappears for users whose cached bootstrap predates the field.
-  const eligibilities =
-    user.eligibilities && user.eligibilities.length > 0
-      ? user.eligibilities
-      : FALLBACK_ELIGIBILITIES;
+  // Federate the card front when the catalog maps the business-card remote —
+  // its design then ships OTA. Falls back to the in-host FrontFace otherwise.
+  const bcService = useCatalogStore(s => s.widgetToService.businessCard);
+  const federateCard = appConfig.mf.enabled && !!bcService;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
@@ -169,7 +153,7 @@ export const EmployeeIdCardSheet: React.FC<EmployeeIdCardSheetProps> = ({ visibl
       </Animated.View>
       <Animated.View
         style={[StyleSheet.absoluteFill, backdropStyle, { backgroundColor: 'rgba(0,0,0,0.28)' }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close ID card" />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close business card" />
       </Animated.View>
 
       <Animated.View
@@ -199,10 +183,10 @@ export const EmployeeIdCardSheet: React.FC<EmployeeIdCardSheetProps> = ({ visibl
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 22, fontWeight: '700', color: theme.colors.ink, letterSpacing: -0.4 }}>
-              Employee ID
+              Business Card
             </Text>
             <Text style={{ fontSize: 12, color: theme.colors.muted, marginTop: 2 }}>
-              Tap card to flip · scan to verify
+              Tap card to flip · scan the QR to save contact
             </Text>
           </View>
           <Pressable
@@ -221,26 +205,27 @@ export const EmployeeIdCardSheet: React.FC<EmployeeIdCardSheetProps> = ({ visibl
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: CARD_HORIZONTAL_PADDING, paddingBottom: 32, alignItems: 'center' }}
           showsVerticalScrollIndicator={false}>
-          {/* Flippable card. Both faces are absolutely positioned and sized
-              the same so the rotateY transform looks correct from either
-              side. backfaceVisibility hides whichever face is currently
-              rotated 90°+ away from the viewer. */}
+          {/* Flippable card — business card front, Platinum back. */}
           <Pressable onPress={handleFlip} style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
             <Animated.View style={[styles.face, frontStyle]}>
-              <FrontFace
-                fullName={fullName}
-                jobTitle={user.jobTitle}
-                department={user.department}
-                company={company}
-                email={user.email}
-                employeeId={user.employeeId}
-                surface={theme.colors.surface}
-                line={theme.colors.line}
-                accent={theme.colors.ekRed}
-                ink={theme.colors.ink}
-                muted={theme.colors.muted}
-                mutedStrong={theme.colors.mutedStrong}
-              />
+              {federateCard ? (
+                <FederatedRemote service={bcService!} />
+              ) : (
+                <FrontFace
+                  fullName={fullName}
+                  jobTitle={user.jobTitle}
+                  organization={company}
+                  email={user.email}
+                  phone={undefined}
+                  surface={theme.colors.surface}
+                  line={theme.colors.line}
+                  accent={theme.colors.ekRed}
+                  ink={theme.colors.ink}
+                  muted={theme.colors.muted}
+                  ekRedDark={theme.colors.ekRedDark}
+                  inkSecondary={theme.colors.inkSecondary}
+                />
+              )}
             </Animated.View>
             <Animated.View style={[styles.face, backStyle]}>
               <PortraitPlatinumBack
@@ -252,35 +237,7 @@ export const EmployeeIdCardSheet: React.FC<EmployeeIdCardSheetProps> = ({ visibl
             </Animated.View>
           </Pressable>
 
-          <View style={[styles.eligibility, { backgroundColor: theme.colors.surface }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: '800',
-                  color: theme.colors.ink,
-                  letterSpacing: 1.6,
-                }}>
-                ACCESS & PRIVILEGES
-              </Text>
-              <View
-                style={{
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                  borderRadius: 4,
-                  backgroundColor: theme.colors.greenSoft,
-                }}>
-                <Text style={{ fontSize: 9, fontWeight: '800', color: theme.colors.green, letterSpacing: 0.8 }}>
-                  VERIFIED
-                </Text>
-              </View>
-            </View>
-            {eligibilities.map((e, i) => (
-              <EligibilityRow key={i} eligibility={e} divider={i < eligibilities.length - 1} />
-            ))}
-          </View>
-
-          <Text style={{ fontSize: 10, color: theme.colors.muted, textAlign: 'center', marginTop: 14 }}>
+          <Text style={{ fontSize: 10, color: theme.colors.muted, textAlign: 'center', marginTop: 16 }}>
             For internal use only · Property of Emirates Group
           </Text>
         </ScrollView>
@@ -290,204 +247,107 @@ export const EmployeeIdCardSheet: React.FC<EmployeeIdCardSheetProps> = ({ visibl
 };
 
 /* ─────────────────────────────────────────────────────────
- * Front face — light surface, red accent stripe, identity rows.
+ * Front face — the digital business card. Light surface, red accent
+ * stripe, avatar + identity, contact rows, and the scannable vCard QR
+ * placed BELOW the contact rows (full-width, centered).
  * ───────────────────────────────────────────────────────── */
 
 interface FrontFaceProps {
   fullName: string;
   jobTitle: string;
-  department: string;
-  company: string;
+  organization: string;
   email: string;
-  employeeId: string;
+  phone?: string;
   surface: string;
   line: string;
   accent: string;
   ink: string;
   muted: string;
-  mutedStrong: string;
+  ekRedDark: string;
+  inkSecondary: string;
 }
-
-/**
- * Single eligibility row inside Access & Privileges. Designed for security
- * scanning at speed — a filled coloured chip on the left (with a check or
- * star), bold high-contrast label, hairline divider between rows.
- */
-const EligibilityRow: React.FC<{ eligibility: UserEligibility; divider: boolean }> = ({
-  eligibility,
-  divider,
-}) => {
-  const theme = useTheme();
-  const tone = eligibility.tone ?? 'gold';
-  // Map the tone keyword to a saturated badge colour. `gold` reads as
-  // "premium/awarded" (gate access, lounge); `green` reads as
-  // "approved/granted" (travel benefits, regular clearances).
-  const accent =
-    tone === 'green' ? theme.colors.green
-    : tone === 'red' ? theme.colors.ekRed
-    : theme.colors.ekGold;
-  const icon: ComponentProps<typeof Icon>['name'] = tone === 'gold' ? 'star' : 'check';
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 10,
-        borderBottomWidth: divider ? StyleSheet.hairlineWidth : 0,
-        borderBottomColor: theme.colors.line,
-      }}>
-      <View
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 14,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: accent,
-        }}>
-        <Icon name={icon} size={15} color="white" stroke={2.6} />
-      </View>
-      <Text
-        style={{
-          flex: 1,
-          fontSize: 14,
-          fontWeight: '700',
-          color: theme.colors.ink,
-          letterSpacing: -0.1,
-        }}>
-        {eligibility.label}
-      </Text>
-    </View>
-  );
-};
 
 const FrontFace: React.FC<FrontFaceProps> = ({
   fullName,
   jobTitle,
-  department,
-  company,
+  organization,
   email,
-  employeeId,
+  phone,
   surface,
   line,
   accent,
   ink,
   muted,
-  mutedStrong,
+  ekRedDark,
+  inkSecondary,
 }) => {
-  // vCard so the QR is a scannable business card ("Add to Contacts").
-  const vCard = vCardService.build({ fullName, organization: company, jobTitle, phone: '', email });
+  // vCard so scanning the QR triggers "Add to Contacts".
+  const vCard = vCardService.build({ fullName, organization, jobTitle, phone: phone ?? '', email });
   return (
-  <View style={[styles.cardBody, { backgroundColor: surface }]}>
-    <View style={[styles.accentStripe, { backgroundColor: accent }]} />
+    <View style={[styles.cardBody, { backgroundColor: surface }]}>
+      <View style={[styles.accentStripe, { backgroundColor: accent }]} />
 
-    <Text
-      style={{
-        fontSize: 9,
-        fontWeight: '800',
-        letterSpacing: 2.4,
-        color: accent,
-        textAlign: 'center',
-        marginTop: 12,
-      }}>
-      EMIRATES GROUP · STAFF
-    </Text>
+      <View style={{ padding: 22, flex: 1 }}>
+        {/* Identity header — avatar left, name / title / org right. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <Avatar size={72} ring />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              style={{ fontSize: 22, fontWeight: '800', color: ink, letterSpacing: -0.3 }}
+              numberOfLines={1}>
+              {fullName || '—'}
+            </Text>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: muted, marginTop: 3 }} numberOfLines={2}>
+              {jobTitle}
+            </Text>
+            <Text
+              style={{ fontSize: 11, fontWeight: '800', color: ekRedDark, letterSpacing: 0.8, marginTop: 5 }}
+              numberOfLines={1}>
+              {organization.toUpperCase()}
+            </Text>
+          </View>
+        </View>
 
-    <View style={{ alignItems: 'center', marginTop: 14 }}>
-      <View
-        style={{
-          borderWidth: 3,
-          borderColor: surface,
-          borderRadius: 999,
-          shadowColor: '#000',
-          shadowOpacity: 0.12,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 2 },
-        }}>
-        <Avatar size={104} />
+        <View style={[styles.divider, { backgroundColor: line }]} />
+
+        {/* Contact rows */}
+        <View style={{ gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Icon name="mail" size={16} color={ekRedDark} />
+            <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
+              {email || '—'}
+            </Text>
+          </View>
+          {phone ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Icon name="phone" size={16} color={ekRedDark} />
+              <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
+                {phone}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* vCard QR — below the contact rows, centered and full-width. */}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 16 }}>
+          <View
+            style={{
+              backgroundColor: surface,
+              borderRadius: 14,
+              padding: 12,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: line,
+            }}>
+            <QRCode value={vCard} size={150} color={ink} backgroundColor={surface} />
+          </View>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: muted, letterSpacing: 1.2, marginTop: 10 }}>
+            SCAN TO ADD CONTACT
+          </Text>
+        </View>
       </View>
     </View>
-
-    <Text
-      style={{
-        fontSize: 19,
-        fontWeight: '800',
-        color: ink,
-        textAlign: 'center',
-        letterSpacing: -0.3,
-        marginTop: 12,
-      }}
-      numberOfLines={1}>
-      {fullName || '—'}
-    </Text>
-    <Text
-      style={{
-        fontSize: 12,
-        fontWeight: '500',
-        color: muted,
-        textAlign: 'center',
-        marginTop: 2,
-        paddingHorizontal: 16,
-      }}
-      numberOfLines={2}>
-      {jobTitle}
-    </Text>
-
-    <View style={[styles.divider, { backgroundColor: line }]} />
-
-    <View style={{ paddingHorizontal: 24, gap: 10 }}>
-      <InfoRow label="Department" value={department} mutedStrong={mutedStrong} ink={ink} />
-      <InfoRow label="Company" value={company} mutedStrong={mutedStrong} ink={ink} />
-      <InfoRow label="Email" value={email} mutedStrong={mutedStrong} ink={ink} />
-      <InfoRow label="Staff ID" value={employeeId} mono mutedStrong={mutedStrong} ink={ink} />
-    </View>
-
-    <View style={[styles.divider, { backgroundColor: line }]} />
-
-    {/* Business-card vCard QR (replaces the staff-ID barcode) — scanning it
-        adds the contact, so the ID card doubles as the digital business card. */}
-    <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 16 }}>
-      <View style={{ backgroundColor: surface, borderRadius: 12, padding: 10 }}>
-        <QRCode value={vCard} size={140} color={ink} backgroundColor={surface} />
-      </View>
-    </View>
-  </View>
   );
 };
-
-const InfoRow: React.FC<{
-  label: string;
-  value: string;
-  mono?: boolean;
-  mutedStrong: string;
-  ink: string;
-}> = ({ label, value, mono, mutedStrong, ink }) => (
-  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14 }}>
-    <Text
-      style={{
-        fontSize: 9,
-        fontWeight: '700',
-        letterSpacing: 1.2,
-        color: mutedStrong,
-        width: 84,
-        marginTop: 2,
-      }}>
-      {label.toUpperCase()}
-    </Text>
-    <Text
-      style={{
-        flex: 1,
-        fontSize: 13,
-        fontWeight: '600',
-        color: ink,
-        ...(mono ? { fontVariant: ['tabular-nums' as const], letterSpacing: 0.5 } : {}),
-      }}
-      numberOfLines={2}>
-      {value || '—'}
-    </Text>
-  </View>
-);
 
 /* ─────────────────────────────────────────────────────────
  * Portrait platinum back — dark surface, gold accents.
@@ -501,17 +361,9 @@ const PortraitPlatinumBack: React.FC<{
   accent: string;
 }> = ({ data, loading, gold, accent }) => {
   const goldMuted = 'rgba(196, 158, 78, 0.7)';
-  // Outer View has no padding so the red accent stripe can sit flush
-  // against the top edge — matching the front face. All content padding
-  // moves to the inner wrapper.
   return (
     <View style={[styles.cardBody, { backgroundColor: '#0a0a0a' }]}>
       <View style={[styles.accentStripe, { backgroundColor: accent }]} />
-      {/* Outer row: content column on the left, vertical barcode strip on
-          the right. The barcode's rotation is applied to an inner view
-          sized horizontally — RN transforms don't reshape layout, so the
-          outer column reserves the rotated dimensions and the inner is
-          centered into them. */}
       <View style={{ flex: 1, flexDirection: 'row' }}>
         <View
           style={{
@@ -522,7 +374,6 @@ const PortraitPlatinumBack: React.FC<{
             paddingBottom: 24,
             justifyContent: 'space-between',
           }}>
-          {/* Top: tier label + corner bracket */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ color: gold, fontSize: 11, fontWeight: '800', letterSpacing: 1.4 }}>
               {data?.tierLabel ?? 'EK · PLATINUM'}
@@ -530,7 +381,6 @@ const PortraitPlatinumBack: React.FC<{
             <CornerBracket label={data?.tierBadge ?? 'EXECUTIVE TIER'} color={gold} />
           </View>
 
-          {/* Middle: profile photo + name + role + org. */}
           <View style={{ alignItems: 'center', gap: 12 }}>
             <Avatar size={96} />
             <View style={{ alignItems: 'center', gap: 3, paddingHorizontal: 8 }}>
@@ -541,9 +391,7 @@ const PortraitPlatinumBack: React.FC<{
               </Text>
               {data ? (
                 <>
-                  <Text
-                    style={{ color: 'rgba(255,255,255,0.78)', fontSize: 12 }}
-                    numberOfLines={1}>
+                  <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 12 }} numberOfLines={1}>
                     {data.jobTitle}
                   </Text>
                   <Text
@@ -558,19 +406,11 @@ const PortraitPlatinumBack: React.FC<{
 
           <View style={{ alignSelf: 'stretch', height: StyleSheet.hairlineWidth, backgroundColor: goldMuted }} />
 
-          {/* Bottom: member id + dates */}
           <View style={{ alignItems: 'center' }}>
             <Text style={{ color: goldMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.4 }}>
               MEMBER ID
             </Text>
-            <Text
-              style={{
-                color: gold,
-                fontSize: 18,
-                fontWeight: '800',
-                letterSpacing: 0.6,
-                marginTop: 2,
-              }}>
+            <Text style={{ color: gold, fontSize: 18, fontWeight: '800', letterSpacing: 0.6, marginTop: 2 }}>
               {data?.memberId ?? '— · —'}
             </Text>
             {data ? (
@@ -581,23 +421,9 @@ const PortraitPlatinumBack: React.FC<{
           </View>
         </View>
 
-        {/* Vertical barcode column. Width is the rotated bar height; the
-            inner view holds the barcode in its native horizontal layout
-            and is rotated -90deg so it visually fills the column. */}
         {data ? (
-          <View style={{
-            width: 64,
-            paddingVertical: 28,
-            paddingRight: 14,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
+          <View style={{ width: 64, paddingVertical: 28, paddingRight: 14, alignItems: 'center', justifyContent: 'center' }}>
             <View style={{ transform: [{ rotate: '-90deg' }] }}>
-              {/* Dark bars on a warm champagne quiet-zone panel. Barcode
-                  scanners need correct polarity (dark on light) and a light
-                  margin; the previous gold-on-black render was a real CODE128
-                  but couldn't be read. The champagne strip keeps the premium
-                  gold feel while staying high-contrast and scannable. */}
               <View style={{ backgroundColor: BARCODE_PANEL, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 }}>
                 <Barcode
                   value={memberIdForBarcode(data.memberId)}
@@ -618,9 +444,7 @@ const PortraitPlatinumBack: React.FC<{
 };
 
 // Member IDs are formatted for display (e.g. "6245 · 79PLT"). CODE128 is
-// ASCII-only, so strip the bullet/whitespace before encoding so a scan
-// returns a clean token ("6245-79PLT"). The human-readable label above
-// the barcode still shows the formatted version.
+// ASCII-only, so strip the bullet/whitespace before encoding.
 function memberIdForBarcode(memberId: string): string {
   return memberId.replace(/\s+/g, '').replace(/·/g, '-');
 }
@@ -643,9 +467,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 8,
   },
-  // The flipping faces. Both share these so they line up perfectly under
-  // the rotateY transform. backfaceVisibility hides each face when rotated
-  // beyond 90° from the viewer.
   face: {
     position: 'absolute',
     top: 0,
@@ -671,18 +492,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 14,
-    marginHorizontal: 22,
-  },
-  eligibility: {
-    marginTop: 18,
-    width: CARD_WIDTH,
-    padding: 14,
-    borderRadius: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    marginVertical: 16,
   },
 });

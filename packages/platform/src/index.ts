@@ -12,6 +12,8 @@ export interface PlatformUser {
   firstName?: string;
   lastName?: string;
   email?: string;
+  jobTitle?: string;
+  organization?: string;
   /** Optional avatar image URI/data-URI; remotes render initials when absent. */
   photoUri?: string;
 }
