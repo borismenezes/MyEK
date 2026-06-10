@@ -7,6 +7,5 @@ export * from './shellVersion';
 export * from './manifestCache';
 export * from './dynamicRemotes';
 export * from './catalogService';
-export * from './staticRemotes';
 export { FederatedRemote } from './FederatedRemote';
-export { getFederatedWidgetComponent } from './FederatedWidget';
+export { FederatedWidget } from './FederatedWidget';

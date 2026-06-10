@@ -1,5 +1,6 @@
 import { identityFromIdToken, intuneAdapter, mergeUser } from './intuneAuth';
 import { useAuthStore } from '@store/useAuthStore';
+import { useCatalogStore } from '@store/useCatalogStore';
 import { versionRegistry, setAccessTokenGetter, setUnauthorizedHandler } from '@api/index';
 import { setApimTokenAcquirer } from '@api/apimClient';
 import { profilePictureService } from '@services/profilePictureService';
@@ -68,6 +69,10 @@ export async function hydrateAuth(): Promise<boolean> {
   // Same pattern for the user profile — refresh from the API in the
   // background so cached-session launches still get up-to-date fields.
   void refreshUserProfile();
+
+  // Load the per-app MF catalog so federated widgets (e.g. leave) resolve from
+  // the backend, not a hardcoded list. Best-effort: failure → in-host widgets.
+  void useCatalogStore.getState().load();
 
   // If the persisted token is expired, kick off a background refresh.
   // We deliberately don't await it — splash dismisses on cached state,
@@ -151,6 +156,8 @@ export async function signIn(): Promise<LoginResult> {
   // initial render already has the bootstrap-bundled user data, this just
   // replaces it with fresh server-side fields (jobTitle, eligibilities, …).
   void refreshUserProfile();
+  // Load the per-app MF catalog so federated widgets resolve (best-effort).
+  void useCatalogStore.getState().load();
   return result;
 }
 

@@ -1,7 +1,5 @@
 import React, { Component, Suspense, useMemo } from 'react';
-import { config } from '@/config';
 import { EXPOSE_WIDGETS, loadExpose } from './dynamicRemotes';
-import { getRemoteForWidget } from './staticRemotes';
 import type { ServiceDefinition } from './types';
 
 type AnyWidget = React.ComponentType<any>;
@@ -9,13 +7,13 @@ type AnyWidget = React.ComponentType<any>;
 /**
  * Renders a home widget from a federated remote, falling back to the in-host
  * component while it loads or if the remote fails (offline / not-yet-deployed /
- * load error). `loadExpose` self-registers the remote on first use, so no boot
- * wiring is required.
+ * load error). `loadExpose` self-registers the remote on first use.
  *
- * The fallback is deliberately lenient (the plan's loose fallback): the user
- * always sees the tile — the in-host version until the remote is available,
- * then the remote. This is also what makes flipping config.mf.enabled safe
- * before the OTA bundle is live.
+ * The `service` comes from the app catalog (useCatalogStore), so which widgets
+ * are federated is backend-driven — no hardcoded list in the client.
+ *
+ * Lenient fallback (the plan's loose fallback): the user always sees the tile —
+ * the in-host version until the remote is available, then the remote.
  */
 interface FederatedWidgetProps {
   service: ServiceDefinition;
@@ -24,7 +22,7 @@ interface FederatedWidgetProps {
   widgetProps: Record<string, unknown>;
 }
 
-function FederatedWidget({ service, widgetId, Fallback, widgetProps }: FederatedWidgetProps): React.ReactElement {
+export function FederatedWidget({ service, widgetId, Fallback, widgetProps }: FederatedWidgetProps): React.ReactElement {
   const Lazy = useMemo(
     () =>
       React.lazy(async () => {
@@ -45,31 +43,6 @@ function FederatedWidget({ service, widgetId, Fallback, widgetProps }: Federated
       </Suspense>
     </FederatedWidgetBoundary>
   );
-}
-
-/**
- * Returns a widget component backed by a federated remote (with in-host
- * fallback), or null when this widgetId has no remote / federation is disabled —
- * in which case the caller renders the in-host component as usual.
- *
- * Memoised per widgetId so the WidgetRenderer gets a stable component identity.
- */
-const cache = new Map<string, AnyWidget>();
-
-export function getFederatedWidgetComponent(widgetId: string, Fallback: AnyWidget): AnyWidget | null {
-  if (!config.mf.enabled) return null;
-  const service = getRemoteForWidget(widgetId);
-  if (!service) return null;
-
-  const cached = cache.get(widgetId);
-  if (cached) return cached;
-
-  const Wrapped: AnyWidget = (props: Record<string, unknown>) => (
-    <FederatedWidget service={service} widgetId={widgetId} Fallback={Fallback} widgetProps={props} />
-  );
-  Wrapped.displayName = `Federated(${widgetId})`;
-  cache.set(widgetId, Wrapped);
-  return Wrapped;
 }
 
 interface BoundaryProps {

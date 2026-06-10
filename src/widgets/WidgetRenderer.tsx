@@ -4,7 +4,9 @@ import { useWidgetData } from '@hooks/useWidgetData';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme, widgetTheme } from '@theme/index';
 import { createLogger } from '@utils/logger';
-import { getFederatedWidgetComponent } from '@services/federation/FederatedWidget';
+import { config as appConfig } from '@config/index';
+import { FederatedWidget } from '@services/federation/FederatedWidget';
+import { useCatalogStore } from '@store/useCatalogStore';
 import { getRegistryEntry } from './WidgetRegistry';
 import { WidgetShell } from './WidgetShell';
 import type { WidgetConfig } from '@/types';
@@ -44,6 +46,10 @@ const WidgetRendererImpl: React.FC<WidgetRendererProps> = ({ config, preview = f
   const hasPermission = useAuthStore(s =>
     !config.requiredPermissions || config.requiredPermissions.every(p => s.permissions.includes(p as any)),
   );
+  // Backend-driven: a widget is federated iff the app catalog maps it to a
+  // remote service (with mf coords). Subscribing here means the tile flips to
+  // the remote once the catalog loads (else it renders in-host).
+  const remoteService = useCatalogStore(s => s.widgetToService[config.widgetId]);
 
   // Hook is always called (rules of hooks); `skip` puts it into a passive
   // preview mode for the edit drawer — no fetcher, no interval, no refresh
@@ -53,11 +59,11 @@ const WidgetRendererImpl: React.FC<WidgetRendererProps> = ({ config, preview = f
   if (!entry) return <UnknownWidget widgetId={config.widgetId} />;
   if (!hasPermission) return null;
 
-  // If this widget is delivered by a federated remote, render the federated
-  // component (which falls back to the in-host one while loading / on failure).
-  // Skipped in preview (edit drawer) to avoid remote loads there.
-  const Component =
-    (!preview && getFederatedWidgetComponent(config.widgetId, entry.component)) || entry.component;
+  const Component = entry.component;
+  const widgetProps = { config, data, loading, error, isStale, onRefresh: refresh, preview };
+  // Federate when the catalog says so (and not in the edit-drawer preview).
+  // FederatedWidget falls back to the in-host Component while loading / on failure.
+  const federate = !preview && appConfig.mf.enabled && !!remoteService;
 
   return (
     <WidgetShell
@@ -71,15 +77,16 @@ const WidgetRendererImpl: React.FC<WidgetRendererProps> = ({ config, preview = f
           doesn't expect) must degrade to a fallback tile, never crash the
           whole app. resetKey=data lets a refreshed payload re-attempt render. */}
       <WidgetErrorBoundary widgetId={config.widgetId} resetKey={data} fallback={<WidgetErrorTile />}>
-        <Component
-          config={config}
-          data={data}
-          loading={loading}
-          error={error}
-          isStale={isStale}
-          onRefresh={refresh}
-          preview={preview}
-        />
+        {federate ? (
+          <FederatedWidget
+            service={remoteService!}
+            widgetId={config.widgetId}
+            Fallback={Component}
+            widgetProps={widgetProps}
+          />
+        ) : (
+          <Component {...widgetProps} />
+        )}
       </WidgetErrorBoundary>
     </WidgetShell>
   );
