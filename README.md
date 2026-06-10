@@ -1,6 +1,6 @@
 # MyEK — Employee Super‑App (Module Federation micro‑frontend)
 
-MyEK is the Emirates Group employee super‑app: a React Native client whose home
+MyEK is the Enterprise employee super‑app: a React Native client whose home
 grid, detail screens and identity surfaces are **federated remotes delivered
 over the air**. The app shell ("host") ships once through the app store; every
 feature after that is published as an OTA bundle and appears with **no app‑store
