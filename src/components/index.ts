@@ -10,7 +10,7 @@ export * from './ErrorBoundary';
 export * from './Pill';
 export * from './ErrorState';
 export * from './DraggableGrid';
-export * from './EmployeeIdCardSheet';
+export * from './EmployeeBusinessCard';
 export * from './InfoSheet';
 export * from './UpcomingFeatureToast';
 export * from './PayslipSheet';
