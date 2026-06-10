@@ -6,7 +6,7 @@ import {
   type ModuleFederationRuntimePlugin,
 } from '@module-federation/runtime';
 import { config } from '@/config';
-import { evictAllCachedScripts } from '../scriptStorage';
+import { evictRevokedScripts } from '../scriptStorage';
 import { loadManifest, saveManifest } from './manifestCache';
 import { SHELL_VERSION, semverGte } from './shellVersion';
 import type { ServiceDefinition, ServiceMfCoords } from './types';
@@ -53,12 +53,34 @@ function isAllowedRemote(service: ServiceDefinition): boolean {
     console.warn(`[MF] rejected non-https manifest for "${service.id}": ${url}`);
     return false;
   }
-  const allow = config.mf.allowedRemoteHosts;
+  // Host pinning. Prefer the configured allowlist; if it's empty, fall back to
+  // the OTA/catalog host(s) rather than allowing ANY https host in release
+  // (the previous empty-allowlist behaviour was fail-open).
+  const allow = config.mf.allowedRemoteHosts.length
+    ? config.mf.allowedRemoteHosts
+    : defaultAllowedHosts();
   if (!__DEV__ && allow.length > 0 && !allow.includes(parsed.hostname)) {
     console.warn(`[MF] rejected disallowed host for "${service.id}": ${parsed.hostname}`);
     return false;
   }
   return true;
+}
+
+/**
+ * Fallback host pin when `allowedRemoteHosts` is unset: the configured OTA /
+ * catalog host(s). Closes the empty-allowlist fail-open — in release, remotes
+ * must come from the backend host this app already talks to.
+ */
+function defaultAllowedHosts(): string[] {
+  const hosts = new Set<string>();
+  for (const u of [config.mf.otaBaseUrl, config.mf.catalogUrl]) {
+    try {
+      if (u) hosts.add(new URL(u).hostname);
+    } catch {
+      /* ignore unparseable config URL */
+    }
+  }
+  return [...hosts];
 }
 
 let initialised = false;
@@ -124,12 +146,18 @@ const manifestCachePlugin: ModuleFederationRuntimePlugin = {
     }
     try {
       const json = await res.clone().json();
-      const prev = loadManifest(manifestUrl);
+      // Key the LKG cache by the remote NAME (mf-manifest.json `name`), not the
+      // URL: errorLoadRemote only receives the remote id, never the manifest URL,
+      // so a URL key is a guaranteed miss (the offline path was dead).
+      const remoteName = (json as { name?: string }).name ?? manifestUrl;
+      const prev = loadManifest(remoteName);
       if (prev && integrityFingerprint(prev) !== integrityFingerprint(json)) {
-        console.log(`[MF] manifest integrity changed for ${manifestUrl} — clearing script cache`);
-        await evictAllCachedScripts();
+        // Evict only THIS remote's chunks — a rebuild of one remote must not
+        // wipe every other remote's cached chunks (previously evicted all).
+        console.log(`[MF] integrity changed for ${remoteName} — evicting its chunks`);
+        await evictRevokedScripts([remoteName]);
       }
-      saveManifest(manifestUrl, json);
+      saveManifest(remoteName, json);
     } catch {
       /* inspection + persistence are best-effort */
     }
@@ -137,9 +165,12 @@ const manifestCachePlugin: ModuleFederationRuntimePlugin = {
   },
   errorLoadRemote(args: { id: string; error: unknown; lifecycle: string }): unknown {
     if (args.lifecycle !== 'afterResolve') return undefined;
-    const cached = loadManifest(args.id);
+    // args.id is the remote request id (e.g. "leave/widgets" or "leave"); the
+    // LKG cache is keyed by remote name, so match on the first segment.
+    const remoteName = String(args.id).split('/')[0];
+    const cached = loadManifest(remoteName);
     if (cached) {
-      console.warn(`[MF] manifest fetch failed; serving last-known-good for ${args.id}`);
+      console.warn(`[MF] manifest fetch failed; serving last-known-good for ${remoteName}`);
       return cached;
     }
     return undefined;
