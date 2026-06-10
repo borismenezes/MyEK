@@ -1,0 +1,13 @@
+{
+  "name": "@myek/timesheet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MyEK Timesheet mini-app — federated as the `timesheet` MF2 remote.",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./screens": "./src/screens/index.ts",
+    "./widgets": "./src/widgets/index.ts"
+  },
+  "dependencies": { "@myek/ui": "*" }
+}
