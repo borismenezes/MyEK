@@ -1,0 +1,17 @@
+{
+  "name": "@myek/business-card",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MyEK Business Card mini-app — federated as the `business_card` MF2 remote.",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./screens": "./src/screens/index.ts",
+    "./widgets": "./src/widgets/index.ts"
+  },
+  "dependencies": {
+    "@myek/ui": "*",
+    "@myek/platform": "*",
+    "react-native-qrcode-svg": "^6.3.21"
+  }
+}
