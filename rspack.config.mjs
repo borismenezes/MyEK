@@ -4,6 +4,7 @@ import * as Repack from '@callstack/repack';
 import rspack from '@rspack/core';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import { loadBuildEnv } from './packages/sdk/rspack/load-env.mjs';
+import { resolveSharedVersions } from './packages/sdk/rspack/shared-versions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,22 +12,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // through react-native-dotenv (@env) via babel.config.js at transform time.
 loadBuildEnv(__dirname);
 
-// Mirror of packages/sdk/src/index.ts SHARED_VERSIONS — a .mjs build file can't
-// import the .ts without a transpile step. KEEP IN SYNC with that file.
-const SHARED_VERSIONS = {
-  react: '19.2.3',
-  'react-native': '0.85.2',
-  '@react-navigation/native': '7.2.2',
-  '@react-navigation/native-stack': '7.14.12',
-  '@react-navigation/bottom-tabs': '7.15.11',
-  'react-native-safe-area-context': '5.5.2',
-  'react-native-screens': '4.24.0',
-  'react-native-reanimated': '4.3.0',
-  'react-native-worklets': '0.8.1',
-  'react-native-gesture-handler': '2.31.1',
-  'react-native-svg': '15.15.4',
-  'react-native-mmkv': '4.3.1',
-};
+// Shared-singleton versions resolved from the installed packages — the host's
+// declared share-scope versions always match what it actually bundles. The
+// package list lives in packages/sdk/rspack/shared-versions.mjs.
+const SHARED_VERSIONS = resolveSharedVersions(__dirname);
 
 function getSharedDependencies({ eager }) {
   const out = {};

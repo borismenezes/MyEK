@@ -18,8 +18,9 @@ type MMKVInstance = ReturnType<typeof createMMKV>;
  *
  * Re.Pack chunk filenames are deterministic (`[name].chunk.bundle`), NOT
  * content-hashed — a rebuilt remote reuses the same chunk URLs. Invalidation on
- * a remote update is therefore explicit (see dynamicRemotes' manifest cache,
- * P2): diff the refreshed manifest and call `evictAllCachedScripts` on change.
+ * a remote update is therefore explicit: dynamicRemotes' manifest-cache plugin
+ * diffs each manifest's `integrity` map and calls `evictRevokedScripts` for
+ * just that remote when it changed.
  */
 const MMKV_ID = 'mf-script-cache';
 
@@ -48,7 +49,8 @@ export const scriptStorage: StorageApi = {
  * Evict cached scripts (locator data + downloaded chunk files) for remotes no
  * longer entitled. Goes through `invalidateScripts` rather than touching MMKV
  * directly because Re.Pack stores its whole locator cache under a single key.
- * Best-effort; all errors swallowed. (Used by the catalog refresh path in P2.)
+ * Best-effort; all errors swallowed. (Used by dynamicRemotes' manifest-cache
+ * plugin when a remote's integrity map changes.)
  */
 export async function evictRevokedScripts(revokedRemoteNames: string[]): Promise<void> {
   if (!revokedRemoteNames.length) return;
@@ -61,9 +63,9 @@ export async function evictRevokedScripts(revokedRemoteNames: string[]): Promise
 
 /**
  * Clear Re.Pack's entire downloaded-script cache (locator blob + native chunk
- * files) so the next load of every remote re-downloads. Coarse, but only fires
- * when a manifest's integrity actually changed (once, right after a remote is
- * redeployed). Best-effort. (Used by the manifest cache plugin in P2.)
+ * files) so the next load of every remote re-downloads. Coarse escape hatch —
+ * currently unused (the manifest-cache plugin evicts per-remote via
+ * `evictRevokedScripts`); kept for debug/reset flows. Best-effort.
  */
 export async function evictAllCachedScripts(): Promise<void> {
   try {

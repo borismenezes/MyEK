@@ -12,7 +12,9 @@ type MMKVInstance = ReturnType<typeof createMMKV>;
  * chunk bytes from ScriptManager's storage.
  *
  * Dedicated MMKV namespace, separate from the chunk cache (`mf-script-cache`)
- * so they evict independently. Keyed by manifest URL.
+ * so they evict independently. Keyed by REMOTE NAME (mf-manifest.json `name`),
+ * not URL — the `errorLoadRemote` fallback only receives the remote id, so a
+ * URL key would never be hit.
  */
 const MMKV_ID = 'mf-manifest-cache';
 
@@ -25,17 +27,17 @@ function getStore(): MMKVInstance {
   return store;
 }
 
-export function saveManifest(manifestUrl: string, manifest: unknown): void {
+export function saveManifest(remoteName: string, manifest: unknown): void {
   try {
-    getStore().set(manifestUrl, JSON.stringify(manifest));
+    getStore().set(remoteName, JSON.stringify(manifest));
   } catch {
     // Best-effort persistence; a miss just means a re-fetch next time.
   }
 }
 
-export function loadManifest(manifestUrl: string): unknown | null {
+export function loadManifest(remoteName: string): unknown | null {
   try {
-    const raw = getStore().getString(manifestUrl);
+    const raw = getStore().getString(remoteName);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;

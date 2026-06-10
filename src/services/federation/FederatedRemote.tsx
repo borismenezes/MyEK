@@ -7,10 +7,9 @@ import type { ServiceDefinition } from './types';
  * Mounts a federated remote's exposed component (default `./screens`) with a
  * Suspense fallback + an error boundary, so one broken/offline remote degrades
  * to an inline error + retry instead of crashing the shell. Mirrors
- * enterprise-app's FederatedTabHost.
- *
- * P1 NOTE: not used in the navigation tree yet — wired in P2 when the first
- * remote exists.
+ * enterprise-app's FederatedTabHost. Full-screen counterpart of FederatedWidget
+ * (which is the live home-grid path); mount this when a remote's `./screens`
+ * expose gets a navigation entry.
  */
 interface Props {
   service: ServiceDefinition;

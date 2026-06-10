@@ -2,9 +2,9 @@
 //
 // Each remote's apps/<service>/rspack.config.mjs imports this and calls
 // `buildRemoteRspackConfig({ appsDir, serviceId, mfName, uniqueName })` so the
-// shared shape (loader rules, shared-deps split, reanimated, exposes) lives in
-// one place. Mirrors enterprise-app's builder, MINUS bundle signing / integrity
-// (deferred). .mjs so the rspack configs import it without a transpile step.
+// shared shape (loader rules, shared-deps split, reanimated, exposes, manifest
+// integrity, OTA chunk signing) lives in one place. Mirrors enterprise-app's
+// builder. .mjs so the rspack configs import it without a transpile step.
 
 import path from 'node:path';
 import * as Repack from '@callstack/repack';
@@ -12,34 +12,21 @@ import rspack from '@rspack/core';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import { MfIntegrityPlugin } from './mf-integrity-plugin.mjs';
 import { loadBuildEnv } from './load-env.mjs';
-
-// Host-provided singletons (import:false) — the host bundles these eagerly and
-// registers the shared scope before any remote loads, so a remote never needs
-// its own fallback copy. KEEP IN SYNC with packages/sdk/src/index.ts +
-// rspack.config.mjs (host).
-const SHARED_VERSIONS_HOST_PROVIDED = {
-  react: '19.2.3',
-  'react-native': '0.85.2',
-  '@react-navigation/native': '7.2.2',
-  '@react-navigation/native-stack': '7.14.12',
-  '@react-navigation/bottom-tabs': '7.15.11',
-  'react-native-safe-area-context': '5.5.2',
-  'react-native-screens': '4.24.0',
-  'react-native-reanimated': '4.3.0',
-  'react-native-worklets': '0.8.1',
-  'react-native-gesture-handler': '2.31.1',
-  'react-native-svg': '15.15.4',
-  'react-native-mmkv': '4.3.1',
-};
+import { resolveSharedVersions } from './shared-versions.mjs';
 
 // MyEK workspace singletons — bundle a small fallback so the singleton getter
 // resolves. Empty until the design-system packages (@myek/ui, @myek/platform,
 // @myek/api-client) are extracted; remotes are self-contained until then.
 const SHARED_VERSIONS_WORKSPACE = {};
 
-function getRemoteSharedDependencies() {
+// Host-provided singletons (import:false) — the host bundles these eagerly and
+// registers the shared scope before any remote loads, so a remote never needs
+// its own fallback copy. Versions are resolved from the installed packages
+// (same node_modules the host builds from), so host and remotes agree by
+// construction. Package list: ./shared-versions.mjs.
+function getRemoteSharedDependencies(rootDir) {
   const out = {};
-  for (const [name, version] of Object.entries(SHARED_VERSIONS_HOST_PROVIDED)) {
+  for (const [name, version] of Object.entries(resolveSharedVersions(rootDir))) {
     out[name] = {
       singleton: true,
       eager: false,
@@ -135,7 +122,7 @@ export function buildRemoteRspackConfig({ appsDir, serviceId, mfName, uniqueName
             './screens': exposesPathScreens,
             './widgets': exposesPathWidgets,
           },
-          shared: getRemoteSharedDependencies(),
+          shared: getRemoteSharedDependencies(ROOT),
           // Resolver swapped for the signing wrapper — injects
           // verifyScriptSignature so the ScriptManager verifies each chunk's JWT.
           // (Absolute path: adaptRuntimePlugins resolves these with no `paths`.)
