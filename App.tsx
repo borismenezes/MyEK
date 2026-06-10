@@ -17,7 +17,7 @@ import { ThemeProvider, useTheme } from '@theme/index';
 import { PlatformBridge } from '@services/federation/PlatformBridge';
 import { RootNavigator } from '@navigation/index';
 import { SplashScreen } from '@screens/SplashScreen';
-import { EmployeeIdCardSheet } from '@components/index';
+import { EmployeeBusinessCard } from '@components/index';
 import { hydrateAuth, wireApiAuth, validateAuthConnection } from '@auth/index';
 import { startSyncManager } from '@offline/syncManager';
 import { useNetworkStatusSync } from '@hooks/useNetworkStatus';
@@ -145,7 +145,7 @@ const GlobalIdSheet: React.FC = () => {
   const setVisible = useUIStore(s => s.setIdSheetVisible);
   const status = useAuthStore(s => s.status);
   if (status !== 'authenticated') return null;
-  return <EmployeeIdCardSheet visible={visible} onClose={() => setVisible(false)} />;
+  return <EmployeeBusinessCard visible={visible} onClose={() => setVisible(false)} />;
 };
 
 /**
