@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { theme, widgetTheme } from '@myek/ui';
+import { Icon, theme, widgetTheme } from '@myek/ui';
 import type { LeaveBalancePayload, WidgetProps } from '../types';
 
 /**
@@ -76,7 +76,7 @@ const Header: React.FC<{ label: string }> = ({ label }) => (
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-      <Text style={{ fontSize: 11, color: theme.colors.ekRed }}>📅</Text>
+      <Icon name="calendar" size={12} color={theme.colors.ekRed} />
     </View>
     <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, letterSpacing: 0.2, textTransform: 'uppercase' }}>
       {label}

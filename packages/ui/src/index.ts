@@ -1,5 +1,8 @@
 import type { TextStyle } from 'react-native';
 
+export { Icon } from './Icon';
+export type { IconName } from './Icon';
+
 /**
  * MyEK shared design tokens. Single source of truth for the brand palette,
  * shape, and widget typography — so a federated remote's UI matches the host

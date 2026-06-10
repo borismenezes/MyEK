@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { theme, widgetTheme } from '@myek/ui';
+import { Icon, theme, widgetTheme } from '@myek/ui';
 import type { AttendancePayload, WidgetProps } from '../types';
 
 /**
@@ -68,7 +68,7 @@ const RingLarge: React.FC<{ data: AttendancePayload }> = ({ data }) => {
 const Header: React.FC = () => (
   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
     <View style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: theme.colors.greenSoft, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: 11 }}>🕐</Text>
+      <Icon name="clock" size={12} color={theme.colors.green} />
     </View>
     <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, textTransform: 'uppercase' }}>
       Attendance
