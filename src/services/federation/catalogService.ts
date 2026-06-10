@@ -30,6 +30,12 @@ export async function fetchServiceCatalog(): Promise<ServiceCatalogResponse> {
     params: { app: config.mf.app, platform, shellVersion: SHELL_VERSION },
   });
   const body = res.data;
+  // A present-but-non-array field is a backend contract violation (schema drift,
+  // an error envelope returned with 200) — surface it instead of silently
+  // coercing to "no services". A genuinely absent field is fine as empty.
+  if (body && body.services !== undefined && !Array.isArray(body.services)) {
+    console.warn('[MF] catalog response malformed: `services` is not an array');
+  }
   return {
     services: Array.isArray(body?.services) ? body.services : [],
     widgets: Array.isArray(body?.widgets) ? body.widgets : [],
