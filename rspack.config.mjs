@@ -115,10 +115,13 @@ export default Repack.defineRspackConfig(env => {
         // Empty here is what makes remotes deliverable OTA without a host rebuild.
         remotes: {},
         shared: getSharedDependencies({ eager: true }),
-        // Stock runtime plugins — no bundle signing yet (deferred).
+        // Resolver swapped for the signing wrapper — verifies each remote
+        // chunk's JWT signature (RepackPublicKey from Info.plist/AndroidManifest)
+        // before executing it. Absolute path: adaptRuntimePlugins resolves these
+        // with no `paths` option.
         defaultRuntimePlugins: [
           '@callstack/repack/mf/core-plugin',
-          '@callstack/repack/mf/resolver-plugin',
+          path.resolve(__dirname, 'packages/sdk/runtime/resolver-with-signing.mjs'),
           '@callstack/repack/mf/prefetch-plugin',
         ],
       }),
