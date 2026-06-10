@@ -74,5 +74,15 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>RepackPublicKey</key>
+	<string>-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2EKvcUSKAia57fYJ8ihu
+uRz5wpu6QqwOpEjKM/8TX2YSOYdSU+UbnoHye9EsgsAIVpYjQQmgnlVrdWMUtxCQ
+6dhL0OibcD7nRxKb2Gsl61vunWk199fV7nODu8prLIJfi1BYuXa7iGyZkAsDOJ2B
+5+Lrv1NCPdDRV4G9XGNkiqiMvHh+alpLxxsVVGyxIO50BNd08p38iV5AWJJTJgXv
+tid73i1SzVaZkJehic/NkMYp/augyIncEjgxOvzeTs5/fkjZzWV48c6CwfqbRq/w
+qNLvOV1aD6HuGHsWYRVLOO/UK3WtHvO8pYL/Iy/kr+jSMMMuW/uTSOBYNMYJZNEk
+ywIDAQAB
+-----END PUBLIC KEY-----</string>
 </dict>
 </plist>

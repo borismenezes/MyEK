@@ -136,10 +136,12 @@ export function buildRemoteRspackConfig({ appsDir, serviceId, mfName, uniqueName
             './widgets': exposesPathWidgets,
           },
           shared: getRemoteSharedDependencies(),
-          // Stock runtime plugins — no signing yet.
+          // Resolver swapped for the signing wrapper — injects
+          // verifyScriptSignature so the ScriptManager verifies each chunk's JWT.
+          // (Absolute path: adaptRuntimePlugins resolves these with no `paths`.)
           defaultRuntimePlugins: [
             '@callstack/repack/mf/core-plugin',
-            '@callstack/repack/mf/resolver-plugin',
+            path.resolve(ROOT, 'packages/sdk/runtime/resolver-with-signing.mjs'),
             '@callstack/repack/mf/prefetch-plugin',
           ],
         }),
@@ -148,6 +150,14 @@ export function buildRemoteRspackConfig({ appsDir, serviceId, mfName, uniqueName
         // rebuilt remote and evict its (URL-keyed) chunk cache → OTA updates
         // actually reach devices. Must run after the MF plugin emits the manifest.
         new MfIntegrityPlugin(),
+        // Sign every remote chunk: Re.Pack appends a JWT (over the chunk hash)
+        // using the OTA private key. The host verifies it against the embedded
+        // public key at load time. Production builds only (`rspack build`); the
+        // dev server (mode==='development') serves unsigned chunks.
+        new Repack.plugins.CodeSigningPlugin({
+          enabled: mode !== 'development',
+          privateKeyPath: path.resolve(ROOT, 'code-signing.pem'),
+        }),
       ],
     };
   });
