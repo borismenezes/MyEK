@@ -19,9 +19,12 @@ import RepackResolverPlugin from '@callstack/repack/mf/resolver-plugin';
 // unsigned chunks through — required while remotes are migrating to signed
 // bundles (a 'strict' host would REJECT every not-yet-resigned remote and brick
 // the home grid). Once ALL published remotes are rebuilt + signed + republished,
-// flip this to `__DEV__ ? 'lax' : 'strict'` so release hard-rejects unsigned/
-// tampered chunks (the actual integrity guarantee). 'lax' is NOT a safe
-// end-state for release — it lets an attacker strip the signature.
-const verifyScriptSignature = 'lax';
+// Release is 'strict': every remote chunk MUST carry a valid signature, else
+// it's rejected (the actual integrity guarantee — without TLS pinning this is
+// the control that stops a MITM injecting an unsigned/tampered bundle). Dev is
+// 'lax' so the unsigned dev-server chunks (`react-native start`) still load.
+// PREREQUISITE (satisfied): every published remote is signed — a strict host
+// rejects any unsigned remote, so all remotes must ship signed from here on.
+const verifyScriptSignature = __DEV__ ? 'lax' : 'strict';
 
 export default () => RepackResolverPlugin({ verifyScriptSignature });
