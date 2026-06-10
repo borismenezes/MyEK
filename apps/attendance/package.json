@@ -1,0 +1,20 @@
+{
+  "name": "@myek/attendance-remote",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Module Federation v2 remote build artifact for the MyEK attendance mini-app.",
+  "scripts": {
+    "build:mf": "rspack build --config rspack.config.mjs --env platform=android",
+    "build:mf:ios": "rspack build --config rspack.config.mjs --env platform=ios",
+    "start": "react-native start --port 9002 --host 0.0.0.0 --platform ios"
+  },
+  "dependencies": { "@myek/attendance": "*" },
+  "devDependencies": {
+    "@myek/sdk": "*",
+    "@callstack/repack": "5.2.5",
+    "@callstack/repack-plugin-reanimated": "5.2.5",
+    "@module-federation/enhanced": "2.3.1",
+    "@rspack/cli": "1.7.11",
+    "@rspack/core": "1.7.11"
+  }
+}

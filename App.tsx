@@ -14,6 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RNShake from 'react-native-shake';
 import { ThemeProvider, useTheme } from '@theme/index';
+import { PlatformBridge } from '@services/federation/PlatformBridge';
 import { RootNavigator } from '@navigation/index';
 import { SplashScreen } from '@screens/SplashScreen';
 import { EmployeeIdCardSheet } from '@components/index';
@@ -36,6 +37,8 @@ const App: React.FC = () => {
         <ThemeProvider>
           <Bootstrapper>
             <ThemedStatusBar />
+            {/* Publishes user + open-profile to @myek/platform for federated remotes. */}
+            <PlatformBridge />
             <RootNavigator />
             {/* Single Employee-ID sheet mounted at app root. Visibility is
                 lifted into useUIStore so the shake-gesture listener below

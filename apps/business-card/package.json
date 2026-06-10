@@ -1,0 +1,8 @@
+{
+  "name": "@myek/business-card-remote",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": { "build:mf:ios": "rspack build --config rspack.config.mjs --env platform=ios", "start": "react-native start --port 9005 --host 0.0.0.0 --platform ios" },
+  "dependencies": { "@myek/business-card": "*" },
+  "devDependencies": { "@myek/sdk": "*", "@callstack/repack": "5.2.5", "@callstack/repack-plugin-reanimated": "5.2.5", "@module-federation/enhanced": "2.3.1", "@rspack/cli": "1.7.11", "@rspack/core": "1.7.11" }
+}

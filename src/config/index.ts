@@ -135,6 +135,28 @@ export const config = {
     level: pick(LOG_LEVEL, 'info') as 'debug' | 'info' | 'warn' | 'error',
     remoteEnabled: pick(LOG_REMOTE_ENABLED, 'false') === 'true',
   },
+  // ── Module Federation (micro-frontend host) ───────────────────────────────
+  // P1: present but DORMANT. The runtime modules under src/services/federation
+  // exist and compile, but nothing fetches the catalog or registers remotes
+  // until P2 (when the backend serves the app-scoped `myek` catalog and the
+  // first remote is built). The app runs as a monolith while `enabled` is false.
+  mf: {
+    // Which application's remotes this host loads (app-scoped OTA + catalog).
+    app: 'myek',
+    // Per-app service catalog (Registry). Remote `mf` coords come from here:
+    // GET {catalogUrl}?app=myek&platform=ios|android&shellVersion=X.
+    catalogUrl: `${apiBaseUrl}/v1/services/catalog`,
+    // Host whose loopback (localhost/127.0.0.1) is swapped in catalog-supplied
+    // manifest URLs so they're reachable from this client/emulator. MyEK's
+    // backend is a real host, so in practice this is a no-op rewrite.
+    otaBaseUrl: apiBaseUrl,
+    // Hostname allowlist for remote manifest URLs (release builds). Empty → skip.
+    allowedRemoteHosts: [] as string[],
+    // Master switch for the federated-remote path. ON in P2: the `leave` widget
+    // loads from OTA, gracefully falling back to the in-host BalanceMeterWidget
+    // until the remote bundle is live (and on any load failure).
+    enabled: true,
+  },
 } as const;
 
 export type AppConfigShape = typeof config;
