@@ -8,5 +8,8 @@
     ".": "./src/index.ts",
     "./screens": "./src/screens/index.ts",
     "./widgets": "./src/widgets/index.ts"
+  },
+  "dependencies": {
+    "@myek/ui": "*"
   }
 }

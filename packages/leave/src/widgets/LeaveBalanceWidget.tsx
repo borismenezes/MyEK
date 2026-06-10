@@ -1,63 +1,102 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { theme, widgetTheme } from '@myek/ui';
 import type { LeaveBalancePayload, WidgetProps } from '../types';
 
-const EK_RED = '#d71921';
-const INK = '#1a1a1c';
-const MUTED = '#6b6b70';
-const LINE = 'rgba(0,0,0,0.08)';
-
 /**
- * Leave balance tile — the `leave` remote's federated home widget. Receives its
- * data via props from the host's WidgetRenderer (MyEK's data-via-props widget
- * contract), so the remote stays a pure presentational component.
+ * Leave balance tile — the `leave` remote's federated home widget. A faithful
+ * port of the host's BalanceMeterWidget, styled with the shared @myek/ui tokens
+ * so it's visually identical to the in-host fallback. Receives its data via
+ * props from the host's WidgetRenderer (data-via-props widget contract).
  *
- * Self-contained styling for the pilot; will adopt @myek/ui (the shared design
- * system) in a later slice so it matches the host's BalanceMeter exactly.
+ * Uses the static @myek/ui `theme` (light) for now; slice 2 swaps this for the
+ * shared useTheme() singleton so it tracks light/dark with the host.
  */
-export const LeaveBalanceWidget: React.FC<WidgetProps<LeaveBalancePayload>> = ({ data, loading }) => {
-  if (loading && !data) {
-    return (
-      <View style={[styles.card, styles.center]}>
-        <ActivityIndicator color={EK_RED} />
-      </View>
-    );
-  }
+export const LeaveBalanceWidget: React.FC<WidgetProps<LeaveBalancePayload>> = ({ config, data }) => {
+  if (!data) return null;
+  const label = (config as { applicationName?: string })?.applicationName ?? 'Leave';
+  const size = (config?.layout as { size?: string } | undefined)?.size ?? config?.size;
+  if (size === 'small') return <BalanceMeterSmall data={data} label={label} />;
+  return <BalanceMeterLarge data={data} label={label} />;
+};
 
-  const total = data?.total ?? 0;
-  const used = data?.used ?? 0;
-  const pending = data?.pending ?? 0;
-  const remaining = Math.max(0, total - used);
-  const pct = total > 0 ? Math.min(1, used / total) : 0;
-
+const BalanceMeterSmall: React.FC<{ data: LeaveBalancePayload; label: string }> = ({ data, label }) => {
+  const remaining = data.total - data.used;
+  const pct = (data.used / Math.max(data.total, 1)) * 100;
   return (
-    <View style={styles.card}>
-      <Text style={styles.label}>ANNUAL LEAVE</Text>
-      <View style={styles.row}>
-        <Text style={styles.big}>{remaining}</Text>
-        <Text style={styles.unit}>days left</Text>
+    <View style={{ flex: 1, gap: 6 }}>
+      <Header label={label} />
+      <View style={{ flex: 1 }} />
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+        <Text style={{ fontSize: widgetTheme.fontSize.hero, fontWeight: widgetTheme.fontWeight.heavy, letterSpacing: -1, color: theme.colors.ink, lineHeight: 36 }}>
+          {remaining}
+        </Text>
+        <Text style={{ fontSize: widgetTheme.fontSize.body, color: theme.colors.muted, fontWeight: widgetTheme.fontWeight.semibold }}>days</Text>
       </View>
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${pct * 100}%` }]} />
+      <View style={{ height: 4, backgroundColor: theme.colors.bg, borderRadius: 999, overflow: 'hidden', marginTop: 4 }}>
+        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: theme.colors.ekRed }} />
       </View>
-      <View style={styles.footer}>
-        <Text style={styles.foot}>{used} used</Text>
-        {pending > 0 ? <Text style={styles.foot}>{pending} pending</Text> : null}
-        <Text style={styles.foot}>{total} total</Text>
+      <Text style={{ fontSize: widgetTheme.fontSize.caption, color: theme.colors.muted }}>
+        {data.used}/{data.total} used
+      </Text>
+    </View>
+  );
+};
+
+const BalanceMeterLarge: React.FC<{ data: LeaveBalancePayload; label: string }> = ({ data, label }) => {
+  const remaining = data.total - data.used;
+  return (
+    <View style={{ flex: 1 }}>
+      <Header label={label} />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 14, marginTop: 14 }}>
+        <View>
+          <Text style={{ fontSize: widgetTheme.fontSize.hero, fontWeight: widgetTheme.fontWeight.heavy, letterSpacing: -1, color: theme.colors.ink, lineHeight: 38 }}>
+            {remaining}
+          </Text>
+          <Text style={{ fontSize: widgetTheme.fontSize.label, color: theme.colors.muted, fontWeight: widgetTheme.fontWeight.semibold }}>days remaining</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Bar label="Used" value={data.used} total={data.total} color={theme.colors.ekRed} />
+          <View style={{ height: 6 }} />
+          <Bar label="Pending" value={data.pending} total={data.total} color={theme.colors.amber} />
+        </View>
       </View>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  card: { flex: 1, justifyContent: 'center', gap: 8 },
-  center: { alignItems: 'center' },
-  label: { fontSize: 11, fontWeight: '800', letterSpacing: 1, color: MUTED },
-  row: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  big: { fontSize: 34, fontWeight: '800', color: INK, letterSpacing: -1 },
-  unit: { fontSize: 13, fontWeight: '600', color: MUTED },
-  track: { height: 6, borderRadius: 3, backgroundColor: LINE, overflow: 'hidden' },
-  fill: { height: 6, borderRadius: 3, backgroundColor: EK_RED },
-  footer: { flexDirection: 'row', justifyContent: 'space-between' },
-  foot: { fontSize: 11, fontWeight: '600', color: MUTED },
-});
+const Header: React.FC<{ label: string }> = ({ label }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+    <View
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: 7,
+        backgroundColor: 'rgba(198,12,48,0.10)',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+      <Text style={{ fontSize: 11, color: theme.colors.ekRed }}>📅</Text>
+    </View>
+    <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, letterSpacing: 0.2, textTransform: 'uppercase' }}>
+      {label}
+    </Text>
+  </View>
+);
+
+const Bar: React.FC<{ label: string; value: number; total: number; color: string }> = ({ label, value, total, color }) => {
+  const pct = (value / Math.max(total, 1)) * 100;
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: widgetTheme.fontSize.label, color: theme.colors.muted }}>{label}</Text>
+        <Text style={{ fontSize: widgetTheme.fontSize.label, color: theme.colors.ink, fontWeight: widgetTheme.fontWeight.semibold }}>
+          {value}/{total}
+        </Text>
+      </View>
+      <View style={{ height: 5, backgroundColor: theme.colors.bg, borderRadius: 999, overflow: 'hidden', marginTop: 4 }}>
+        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color }} />
+      </View>
+    </View>
+  );
+};
