@@ -10,7 +10,7 @@ const log = createLogger('Service/GraphProfile');
 // it. `employeeId` is only populated when the org syncs it to Entra; absent is
 // fine (we just don't override).
 const GRAPH_ME_URL =
-  'https://graph.microsoft.com/v1.0/me?$select=givenName,surname,jobTitle,department,officeLocation,mail,userPrincipalName,employeeId';
+  'https://graph.microsoft.com/v1.0/me?$select=givenName,surname,jobTitle,department,officeLocation,mail,userPrincipalName,employeeId,mobilePhone,businessPhones';
 const GRAPH_SCOPES = ['https://graph.microsoft.com/User.Read'];
 
 interface GraphMe {
@@ -22,6 +22,8 @@ interface GraphMe {
   mail?: string;
   userPrincipalName?: string;
   employeeId?: string;
+  mobilePhone?: string;
+  businessPhones?: string[];
 }
 
 /**
@@ -58,6 +60,8 @@ async function fetchGraphProfile(): Promise<Partial<User> | null> {
     if (me.officeLocation) out.location = me.officeLocation;
     if (me.mail || me.userPrincipalName) out.email = (me.mail ?? me.userPrincipalName)!;
     if (me.employeeId) out.employeeId = me.employeeId;
+    const phone = me.mobilePhone || me.businessPhones?.[0];
+    if (phone) out.phone = phone;
     return out;
   } catch (e) {
     log.warn('Graph /me threw — keeping current identity', e);

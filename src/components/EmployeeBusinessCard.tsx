@@ -23,10 +23,12 @@ import { Icon } from './Icon';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const CARD_HORIZONTAL_PADDING = 16;
+const CARD_HORIZONTAL_PADDING = 28;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_PADDING * 2;
 // Portrait — holds the business-card front (photo + identity + contact + QR).
-const CARD_ASPECT = 1.4;
+// Compact popup (~70% of the old footprint): narrower via the wider side padding
+// above, and a shorter aspect here.
+const CARD_ASPECT = 1.3;
 const CARD_HEIGHT = Math.round(CARD_WIDTH * CARD_ASPECT);
 
 interface EmployeeBusinessCardProps {
@@ -157,7 +159,8 @@ export const EmployeeBusinessCard: React.FC<EmployeeBusinessCardProps> = ({ visi
                 jobTitle={user.jobTitle}
                 organization={company}
                 email={user.email}
-                phone={undefined}
+                phone={user.phone}
+                staffId={user.employeeId}
                 surface={theme.colors.surface}
                 line={theme.colors.line}
                 accent={theme.colors.ekRed}
@@ -169,9 +172,6 @@ export const EmployeeBusinessCard: React.FC<EmployeeBusinessCardProps> = ({ visi
             )}
           </View>
 
-          <Text style={{ fontSize: 10, color: theme.colors.muted, textAlign: 'center', marginTop: 16 }}>
-            For internal use only · Property of Emirates Group
-          </Text>
         </ScrollView>
       </Animated.View>
     </View>
@@ -190,6 +190,7 @@ interface FrontFaceProps {
   organization: string;
   email: string;
   phone?: string;
+  staffId?: string;
   surface: string;
   line: string;
   accent: string;
@@ -205,6 +206,7 @@ const FrontFace: React.FC<FrontFaceProps> = ({
   organization,
   email,
   phone,
+  staffId,
   surface,
   line,
   accent,
@@ -214,6 +216,10 @@ const FrontFace: React.FC<FrontFaceProps> = ({
   inkSecondary,
 }) => {
   const vCard = vCardService.build({ fullName, organization, jobTitle, phone: phone ?? '', email });
+  // Show the REAL staff number (Graph /me) with an "S" prefix — never the ID
+  // token's `oid` UUID fallback (suppress it until /me provides the real value).
+  const isStaffUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(staffId ?? '');
+  const staffIdLabel = !staffId || isStaffUuid ? '' : /^s/i.test(staffId) ? staffId : `S${staffId}`;
   return (
     <View style={[styles.cardBody, { backgroundColor: surface }]}>
       <View style={[styles.accentStripe, { backgroundColor: accent }]} />
@@ -222,13 +228,13 @@ const FrontFace: React.FC<FrontFaceProps> = ({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
           <Avatar size={72} ring />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: ink, letterSpacing: -0.3 }} numberOfLines={1}>
+            <Text style={{ fontSize: 25, fontWeight: '800', color: ink, letterSpacing: -0.3 }} numberOfLines={1}>
               {fullName || '—'}
             </Text>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: muted, marginTop: 3 }} numberOfLines={2}>
+            <Text style={{ fontSize: 15, fontWeight: '500', color: muted, marginTop: 3 }} numberOfLines={2}>
               {jobTitle}
             </Text>
-            <Text style={{ fontSize: 11, fontWeight: '800', color: ekRedDark, letterSpacing: 0.8, marginTop: 5 }} numberOfLines={1}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: ekRedDark, letterSpacing: 0.8, marginTop: 5 }} numberOfLines={1}>
               {organization.toUpperCase()}
             </Text>
           </View>
@@ -239,15 +245,25 @@ const FrontFace: React.FC<FrontFaceProps> = ({
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Icon name="mail" size={16} color={ekRedDark} />
-            <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
+            <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
               {email || '—'}
             </Text>
           </View>
           {phone ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Icon name="phone" size={16} color={ekRedDark} />
-              <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
+              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
                 {phone}
+              </Text>
+            </View>
+          ) : null}
+          {staffIdLabel ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 16, alignItems: 'center' }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: ekRedDark, letterSpacing: 0.3 }}>ID</Text>
+              </View>
+              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
+                {staffIdLabel}
               </Text>
             </View>
           ) : null}
@@ -262,7 +278,7 @@ const FrontFace: React.FC<FrontFaceProps> = ({
               borderWidth: StyleSheet.hairlineWidth,
               borderColor: line,
             }}>
-            <QRCode value={vCard} size={150} color={ink} backgroundColor={surface} />
+            <QRCode value={vCard} size={200} color={ink} backgroundColor={surface} />
           </View>
           <Text style={{ fontSize: 10, fontWeight: '700', color: muted, letterSpacing: 1.2, marginTop: 10 }}>
             SCAN TO ADD CONTACT

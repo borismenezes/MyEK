@@ -1,8 +1,8 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Icon, useTheme } from '@myek/ui';
-import { buildVCard, getPlatformUser } from '@myek/platform';
+import { Icon, useTheme, usePlatformUser } from '@myek/ui';
+import { buildVCard, copyToClipboard } from '@myek/platform';
 
 /**
  * Federated business-card FRONT — the `business_card` remote's `./screens`
@@ -17,7 +17,7 @@ import { buildVCard, getPlatformUser } from '@myek/platform';
  */
 export default function BusinessCardScreen(): React.ReactElement {
   const theme = useTheme();
-  const user = getPlatformUser();
+  const user = usePlatformUser();
   const fullName =
     user && (user.firstName || user.lastName)
       ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
@@ -25,7 +25,14 @@ export default function BusinessCardScreen(): React.ReactElement {
   const jobTitle = user?.jobTitle ?? '';
   const organization = user?.organization ?? 'Emirates Group';
   const email = user?.email ?? '';
-  const vCard = buildVCard({ fullName, organization, jobTitle, phone: '', email });
+  const phone = user?.phone ?? '';
+  const rawStaffId = user?.employeeId ?? '';
+  // Show the REAL staff number (from Graph /me) only — never the ID token's `oid`
+  // UUID fallback. Until /me lands, employeeId may be the oid; suppress it (the
+  // reactive usePlatformUser re-renders the row in once /me overrides it).
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawStaffId);
+  const staffId = !rawStaffId || isUuid ? '' : /^s/i.test(rawStaffId) ? rawStaffId : `S${rawStaffId}`;
+  const vCard = buildVCard({ fullName, organization, jobTitle, phone, email });
 
   return (
     <View style={[styles.body, { backgroundColor: theme.colors.surface }]}>
@@ -36,13 +43,13 @@ export default function BusinessCardScreen(): React.ReactElement {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
           <Avatar size={72} name={fullName} photoUri={user?.photoUri} />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: theme.colors.ink, letterSpacing: -0.3 }} numberOfLines={1}>
+            <Text style={{ fontSize: 25, fontWeight: '800', color: theme.colors.ink, letterSpacing: -0.3 }} numberOfLines={1}>
               {fullName}
             </Text>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: theme.colors.muted, marginTop: 3 }} numberOfLines={2}>
+            <Text style={{ fontSize: 15, fontWeight: '500', color: theme.colors.muted, marginTop: 3 }} numberOfLines={2}>
               {jobTitle}
             </Text>
-            <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.ekRedDark, letterSpacing: 0.8, marginTop: 5 }} numberOfLines={1}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.ekRedDark, letterSpacing: 0.8, marginTop: 5 }} numberOfLines={1}>
               {organization.toUpperCase()}
             </Text>
           </View>
@@ -50,20 +57,49 @@ export default function BusinessCardScreen(): React.ReactElement {
 
         <View style={[styles.divider, { backgroundColor: theme.colors.line }]} />
 
-        {/* Contact rows */}
+        {/* Contact rows — tap any to copy. */}
         <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Icon name="mail" size={16} color={theme.colors.ekRedDark} />
-            <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: theme.colors.inkSecondary }} numberOfLines={1}>
-              {email || '—'}
-            </Text>
-          </View>
+          {email ? (
+            <Pressable
+              onPress={() => copyToClipboard(email, 'Email')}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              accessibilityLabel={`Copy email ${email}`}>
+              <Icon name="mail" size={16} color={theme.colors.ekRedDark} />
+              <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: theme.colors.inkSecondary }} numberOfLines={1}>
+                {email}
+              </Text>
+            </Pressable>
+          ) : null}
+          {phone ? (
+            <Pressable
+              onPress={() => copyToClipboard(phone, 'Phone')}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              accessibilityLabel={`Copy phone ${phone}`}>
+              <Icon name="phone" size={16} color={theme.colors.ekRedDark} />
+              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: theme.colors.inkSecondary }} numberOfLines={1}>
+                {phone}
+              </Text>
+            </Pressable>
+          ) : null}
+          {staffId ? (
+            <Pressable
+              onPress={() => copyToClipboard(staffId, 'Staff ID')}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              accessibilityLabel={`Copy staff ID ${staffId}`}>
+              <View style={{ width: 16, alignItems: 'center' }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.ekRedDark, letterSpacing: 0.3 }}>ID</Text>
+              </View>
+              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: theme.colors.inkSecondary }} numberOfLines={1}>
+                {staffId}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {/* vCard QR — below the contact rows, centered. */}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 16 }}>
           <View style={{ backgroundColor: theme.colors.surface, borderRadius: 14, padding: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.line }}>
-            <QRCode value={vCard} size={150} color={theme.colors.ink} backgroundColor={theme.colors.surface} />
+            <QRCode value={vCard} size={200} color={theme.colors.ink} backgroundColor={theme.colors.surface} />
           </View>
           <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.muted, letterSpacing: 1.2, marginTop: 10 }}>
             SCAN TO ADD CONTACT

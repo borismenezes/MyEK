@@ -1,9 +1,24 @@
 import { useSyncExternalStore } from 'react';
 import type { TextStyle } from 'react-native';
-import { getActiveTheme, subscribeTheme } from '@myek/platform';
+import {
+  getActiveTheme,
+  getPlatformUser,
+  subscribeTheme,
+  subscribeUser,
+  type PlatformUser,
+} from '@myek/platform';
 
 export { Icon } from './Icon';
 export type { IconName } from './Icon';
+
+/**
+ * Reactive read of the host-published user. Re-renders the consumer whenever the
+ * host republishes (e.g. when Graph /me lands and overrides employeeId), so a
+ * federated remote never shows stale token-derived identity. Mirrors useTheme().
+ */
+export function usePlatformUser(): PlatformUser | null {
+  return useSyncExternalStore(subscribeUser, getPlatformUser, getPlatformUser);
+}
 
 /**
  * MyEK shared design tokens. Single source of truth for the brand palette,
