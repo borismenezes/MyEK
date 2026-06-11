@@ -6,7 +6,7 @@ import {
   type ModuleFederationRuntimePlugin,
 } from '@module-federation/runtime';
 import { config } from '@/config';
-import { evictRevokedScripts } from '../scriptStorage';
+import { evictAllCachedScripts } from '../scriptStorage';
 import { loadManifest, saveManifest } from './manifestCache';
 import { SHELL_VERSION, semverGte } from './shellVersion';
 import type { ServiceDefinition, ServiceMfCoords } from './types';
@@ -86,6 +86,12 @@ function defaultAllowedHosts(): string[] {
 
 let initialised = false;
 
+// One chunk-cache clear per session: the first remote whose integrity changed
+// clears ALL cached chunks (see evictAllCachedScripts for why per-remote can't
+// work), so subsequent changed remotes mustn't clear again — that would re-evict
+// chunks the earlier clear already re-downloaded.
+let chunkCacheClearedThisSession = false;
+
 // Registered-remote tracking keyed on `remoteName:version` (version = bundleHash
 // or manifestUrl) so a catalog refresh that rotates a remote's bundle re-points
 // the runtime instead of no-opping on the stale registration.
@@ -152,11 +158,20 @@ const manifestCachePlugin: ModuleFederationRuntimePlugin = {
       // so a URL key is a guaranteed miss (the offline path was dead).
       const remoteName = (json as { name?: string }).name ?? manifestUrl;
       const prev = loadManifest(remoteName);
-      if (prev && integrityFingerprint(prev) !== integrityFingerprint(json)) {
-        // Evict only THIS remote's chunks — a rebuild of one remote must not
-        // wipe every other remote's cached chunks (previously evicted all).
-        console.log(`[MF] integrity changed for ${remoteName} — evicting its chunks`);
-        await evictRevokedScripts([remoteName]);
+      if (
+        !chunkCacheClearedThisSession &&
+        prev &&
+        integrityFingerprint(prev) !== integrityFingerprint(json)
+      ) {
+        // A rebuilt remote reuses the same (deterministic) chunk URLs, so the
+        // cached chunk would be served forever. Clear the whole MF chunk cache
+        // once this session so every changed remote re-downloads; guarded so a
+        // second changed remote doesn't re-evict what the first clear already
+        // refreshed. (Per-remote eviction can't be done reliably — see
+        // evictAllCachedScripts.)
+        chunkCacheClearedThisSession = true;
+        console.log(`[MF] integrity changed (${remoteName}) — clearing chunk cache so updated remotes re-download`);
+        await evictAllCachedScripts();
       }
       saveManifest(remoteName, json);
     } catch {

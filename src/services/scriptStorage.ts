@@ -17,10 +17,11 @@ type MMKVInstance = ReturnType<typeof createMMKV>;
  * independently.
  *
  * Re.Pack chunk filenames are deterministic (`[name].chunk.bundle`), NOT
- * content-hashed — a rebuilt remote reuses the same chunk URLs. Invalidation on
- * a remote update is therefore explicit: dynamicRemotes' manifest-cache plugin
- * diffs each manifest's `integrity` map and calls `evictRevokedScripts` for
- * just that remote when it changed.
+ * content-hashed — a rebuilt remote reuses the same chunk URLs, so ScriptManager
+ * would serve the stale cached chunk forever. Invalidation on a remote update is
+ * therefore explicit: dynamicRemotes' manifest-cache plugin diffs each manifest's
+ * `integrity` map and, on a change, calls `evictAllCachedScripts` (once per
+ * session) so every updated remote re-downloads.
  */
 const MMKV_ID = 'mf-script-cache';
 
@@ -46,26 +47,19 @@ export const scriptStorage: StorageApi = {
 };
 
 /**
- * Evict cached scripts (locator data + downloaded chunk files) for remotes no
- * longer entitled. Goes through `invalidateScripts` rather than touching MMKV
- * directly because Re.Pack stores its whole locator cache under a single key.
- * Best-effort; all errors swallowed. (Used by dynamicRemotes' manifest-cache
- * plugin when a remote's integrity map changes.)
- */
-export async function evictRevokedScripts(revokedRemoteNames: string[]): Promise<void> {
-  if (!revokedRemoteNames.length) return;
-  try {
-    await ScriptManager.shared.invalidateScripts(revokedRemoteNames);
-  } catch {
-    // Eviction is best-effort; a stale chunk file is wasted disk, not a bug.
-  }
-}
-
-/**
  * Clear Re.Pack's entire downloaded-script cache (locator blob + native chunk
- * files) so the next load of every remote re-downloads. Coarse escape hatch —
- * currently unused (the manifest-cache plugin evicts per-remote via
- * `evictRevokedScripts`); kept for debug/reset flows. Best-effort.
+ * files) so the next load of every remote re-downloads.
+ *
+ * This is intentionally coarse. Per-remote eviction is not reliable here:
+ * ScriptManager keys its cache by `locator.uniqueId` (not the remote name), and
+ * the native side keys downloaded files by scriptId — so `invalidateScripts([
+ * remoteName])` matches neither and silently no-ops, AND even a correct
+ * `invalidateScripts([scriptId])` would only drop the container, not the
+ * `__federation_expose_*` chunks that actually changed. Clearing everything once
+ * (on the first detected integrity change in a session) is the robust option:
+ * every changed remote re-downloads; an unchanged remote re-downloads once
+ * (cheap, infrequent — only happens when something was republished). Passing no
+ * args clears all cache keys. Best-effort.
  */
 export async function evictAllCachedScripts(): Promise<void> {
   try {
