@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Icon, useTheme, widgetTheme } from '@myek/ui';
-import { buildVCard, getPlatformUser, openProfile } from '@myek/platform';
+import { Icon, useTheme, usePlatformUser, widgetTheme } from '@myek/ui';
+import { buildVCard, openProfile } from '@myek/platform';
 import type { BusinessCardPayload, WidgetProps } from '../types';
 
 /**
@@ -30,7 +30,7 @@ export const IdentityCardWidget: React.FC<WidgetProps<BusinessCardPayload>> = ({
 
 const FrontFace: React.FC<{ data: BusinessCardPayload }> = ({ data }) => {
   const theme = useTheme();
-  const user = getPlatformUser();
+  const user = usePlatformUser();
   const fullName =
     user && (user.firstName || user.lastName) ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : data.fullName;
   const email = user?.email || data.email;

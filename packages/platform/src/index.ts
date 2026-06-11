@@ -14,21 +14,53 @@ export interface PlatformUser {
   email?: string;
   jobTitle?: string;
   organization?: string;
+  /** Staff/employee ID — shown on the business card. */
+  employeeId?: string;
+  /** Work phone (Graph /me). Shown on the business card when present. */
+  phone?: string;
   /** Optional avatar image URI/data-URI; remotes render initials when absent. */
   photoUri?: string;
 }
 
 const G = globalThis as unknown as Record<string, unknown>;
 const USER_KEY = '__myek_platform_user__';
+const USER_SUBS_KEY = '__myek_platform_user_subs__';
 const OPEN_PROFILE_KEY = '__myek_platform_open_profile__';
 const THEME_KEY = '__myek_platform_theme__';
 const THEME_SUBS_KEY = '__myek_platform_theme_subs__';
 
+function userSubs(): Set<() => void> {
+  let subs = G[USER_SUBS_KEY] as Set<() => void> | undefined;
+  if (!subs) {
+    subs = new Set();
+    G[USER_SUBS_KEY] = subs;
+  }
+  return subs;
+}
+
 export function setPlatformUser(user: PlatformUser | null): void {
   G[USER_KEY] = user ?? undefined;
+  // Notify subscribers (remotes via usePlatformUser) so the card re-renders when
+  // the host republishes — e.g. once Graph /me overrides employeeId with the real
+  // value. Without this the federated card reads stale token-derived data.
+  for (const cb of [...userSubs()]) {
+    try {
+      cb();
+    } catch {
+      // a single bad subscriber must not stop the rest
+    }
+  }
 }
 export function getPlatformUser(): PlatformUser | null {
   return (G[USER_KEY] as PlatformUser | undefined) ?? null;
+}
+/** Subscribe to platform-user changes. Returns an unsubscribe fn. */
+export function subscribeUser(cb: () => void): () => void {
+  const subs = userSubs();
+  subs.add(cb);
+  return () => {
+    subs.delete(cb);
+  };
 }
 
 export function setOpenProfile(fn: (() => void) | null): void {
@@ -37,6 +69,21 @@ export function setOpenProfile(fn: (() => void) | null): void {
 export function openProfile(): void {
   const fn = G[OPEN_PROFILE_KEY];
   if (typeof fn === 'function') (fn as () => void)();
+}
+
+// ── Copy-to-clipboard bridge ──────────────────────────────────────────────────
+// The clipboard is a native module linked in the HOST. Rather than have every
+// remote depend on it, the host publishes a copy action (with its own toast/
+// feedback) onto globalThis and remotes call it — same pattern as openProfile.
+const COPY_KEY = '__myek_platform_copy__';
+
+export function setCopyToClipboard(fn: ((text: string, label?: string) => void) | null): void {
+  G[COPY_KEY] = fn ?? undefined;
+}
+/** Copy `text` to the clipboard via the host (shows host-side feedback). */
+export function copyToClipboard(text: string, label?: string): void {
+  const fn = G[COPY_KEY];
+  if (typeof fn === 'function') (fn as (t: string, l?: string) => void)(text, label);
 }
 
 // ── Active theme bridge ───────────────────────────────────────────────────────

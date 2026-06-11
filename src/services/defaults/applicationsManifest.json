@@ -62,7 +62,7 @@
     "applicationName": "Timesheet",
     "widgetName": "timesheet",
     "icon": "timesheet",
-    "defaultSize": "small",
+    "defaultSize": "large",
     "enabled": true,
     "showInServices": true,
     "showOnHome": true,

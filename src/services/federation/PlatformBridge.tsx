@@ -1,7 +1,15 @@
 import { useEffect } from 'react';
+import { Platform, ToastAndroid } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { useAuthStore } from '@store/useAuthStore';
 import { useUIStore } from '@store/useUIStore';
-import { setActiveTheme, setOpenProfile, setPlatformUser, type PlatformTheme } from '@myek/platform';
+import {
+  setActiveTheme,
+  setCopyToClipboard,
+  setOpenProfile,
+  setPlatformUser,
+  type PlatformTheme,
+} from '@myek/platform';
 import { useTheme } from '@/theme';
 
 /**
@@ -34,6 +42,8 @@ export function PlatformBridge(): null {
             email: user.email,
             jobTitle: user.jobTitle,
             organization: 'Emirates Group',
+            employeeId: user.employeeId,
+            phone: user.phone,
             photoUri: photo && photo.base64 ? `data:${photo.mimeType};base64,${photo.base64}` : undefined,
           }
         : null,
@@ -44,6 +54,18 @@ export function PlatformBridge(): null {
     setOpenProfile(() => openIdSheet(true));
     return () => setOpenProfile(null);
   }, [openIdSheet]);
+
+  // Publish a copy action so remotes (the business card) can copy fields without
+  // depending on the native clipboard module. Shows a short confirmation toast.
+  useEffect(() => {
+    setCopyToClipboard((text, label) => {
+      if (!text) return;
+      Clipboard.setString(text);
+      const msg = label ? `${label} copied` : 'Copied';
+      if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.SHORT);
+    });
+    return () => setCopyToClipboard(null);
+  }, []);
 
   return null;
 }

@@ -94,9 +94,9 @@ export const WidgetRegistry: Record<string, WidgetRegistryEntry> = {
     description: 'Hours logged this week',
     icon: 'timesheet',
     component: HoursProgressWidget,
-    supportedSizes: ['small'],
+    supportedSizes: ['small', 'large'],
     surface: true,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/timesheet/week', size: 'small' },
+    defaultConfig: { apiVersion: 'v1', endpoint: '/timesheet/week', size: 'large' },
   },
   applications: {
     widgetId: 'applications',

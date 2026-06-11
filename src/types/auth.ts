@@ -49,6 +49,8 @@ export interface User {
   department: string;
   grade: string;
   location: string;
+  /** Work phone (Graph /me mobilePhone, fallback businessPhones[0]). Optional. */
+  phone?: string;
   joinedAt: string; // ISO
   avatarUrl?: string;
   /**

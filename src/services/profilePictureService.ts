@@ -1,4 +1,3 @@
-import { Alert } from 'react-native';
 import { intuneAdapter } from '@auth/intuneAuth';
 import { createLogger } from '@utils/logger';
 import type { ProfilePicture } from '@/types';
@@ -37,9 +36,7 @@ const GRAPH_SCOPES = ['https://graph.microsoft.com/User.Read'];
 async function fetchProfilePicture(): Promise<ProfilePicture> {
   const token = await intuneAdapter.acquireTokenForScopes(GRAPH_SCOPES);
   if (!token) {
-    reportError('No Graph token', {
-      reason: 'acquireTokenForScopes returned null — no cached account, or silent acquisition needs interaction',
-    });
+    log.warn('No Graph token (mock/offline or silent acquisition needs interaction) — Avatar shows initials');
     return EMPTY_PHOTO;
   }
   try {
@@ -47,71 +44,26 @@ async function fetchProfilePicture(): Promise<ProfilePicture> {
       headers: { Authorization: `Bearer ${token}`, Accept: 'image/*' },
     });
     if (res.status === 404) {
-      // ImageNotFound — the account simply has no Exchange-stored photo. An
-      // expected empty state (→ real-user initials), NOT an error: don't surface.
+      // ImageNotFound — the account has no Exchange-stored photo. Expected empty
+      // state (→ real-user initials), not an error.
       log.debug('Graph /me/photo 404 (no photo for this account) — Avatar shows initials');
       return EMPTY_PHOTO;
     }
     if (!res.ok) {
-      // A real failure (auth/transport/Graph), distinct from "no photo". Decode
-      // the token so the report shows whether the audience/scopes are wrong.
       const body = await res.text().catch(() => '<no body>');
-      const claims = decodeJwtClaims(token);
-      reportError(`Graph /me/photo ${res.status}`, {
-        status: res.status,
-        aud: claims.aud,
-        scp: claims.scp,
-        appid: claims.appid ?? claims.azp,
-        body: body.slice(0, 400),
-      });
+      log.warn(`Graph /me/photo failed (${res.status}) — Avatar shows initials`, body.slice(0, 300));
       return EMPTY_PHOTO;
     }
     const parsed = parseDataUri(await blobToDataUri(await res.blob()));
     if (!parsed) {
-      reportError('Graph photo: base64 conversion failed', { ct: res.headers.get('content-type') });
+      log.warn('Graph photo: base64 conversion failed — Avatar shows initials');
       return EMPTY_PHOTO;
     }
     log.debug('Graph profile photo loaded', { mime: parsed.mimeType, bytes: parsed.base64.length });
     return parsed;
   } catch (e) {
-    reportError('Graph photo fetch threw', { error: e instanceof Error ? e.message : String(e) });
+    log.warn('Graph photo fetch threw — Avatar shows initials', e);
     return EMPTY_PHOTO;
-  }
-}
-
-/**
- * Surface a GENUINE photo-fetch failure (token / transport / Graph error) —
- * distinct from the expected no-photo 404. Always logged; a DEV-ONLY Alert makes
- * it visible despite release stripping console, so a real regression isn't masked
- * by the silent initials fallback. Demos/release see nothing on-screen.
- */
-function reportError(title: string, info: Record<string, unknown>): void {
-  log.warn(`[photo] ${title}`, info);
-  if (!__DEV__) return;
-  try {
-    Alert.alert(`Photo: ${title}`, JSON.stringify(info, null, 2));
-  } catch {
-    /* Alert unavailable in some contexts — the log line above still records it. */
-  }
-}
-
-/** Decode a JWT payload for diagnostics (no signature check). */
-function decodeJwtClaims(jwt: string): Record<string, unknown> {
-  try {
-    const payload = jwt.split('.')[1];
-    if (!payload) return {};
-    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-    return JSON.parse(
-      decodeURIComponent(
-        atob(b64 + pad)
-          .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join(''),
-      ),
-    ) as Record<string, unknown>;
-  } catch {
-    return { _note: 'token is not a decodable JWT (opaque/encrypted)' };
   }
 }
 
