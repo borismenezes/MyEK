@@ -130,20 +130,21 @@ export const EmployeeBusinessCard: React.FC<EmployeeBusinessCardProps> = ({ visi
             <Text style={{ fontSize: 22, fontWeight: '700', color: theme.colors.ink, letterSpacing: -0.4 }}>
               Business Card
             </Text>
-            <Text style={{ fontSize: 12, color: theme.colors.muted, marginTop: 2 }}>
-              Scan the QR to save contact
-            </Text>
           </View>
           <Pressable
             onPress={onClose}
+            accessibilityLabel="Close"
+            hitSlop={8}
             style={({ pressed }) => ({
-              backgroundColor: theme.colors.ekRed,
-              paddingHorizontal: 14,
-              paddingVertical: 6,
-              borderRadius: 999,
-              opacity: pressed ? 0.85 : 1,
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.colors.line,
+              opacity: pressed ? 0.6 : 1,
             })}>
-            <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Done</Text>
+            <Icon name="close" size={18} color={theme.colors.mutedStrong} />
           </Pressable>
         </View>
 
@@ -160,7 +161,7 @@ export const EmployeeBusinessCard: React.FC<EmployeeBusinessCardProps> = ({ visi
                 organization={company}
                 email={user.email}
                 phone={user.phone}
-                staffId={user.employeeId}
+                staffId={user.staffId}
                 surface={theme.colors.surface}
                 line={theme.colors.line}
                 accent={theme.colors.ekRed}
@@ -216,10 +217,8 @@ const FrontFace: React.FC<FrontFaceProps> = ({
   inkSecondary,
 }) => {
   const vCard = vCardService.build({ fullName, organization, jobTitle, phone: phone ?? '', email });
-  // Show the REAL staff number (Graph /me) with an "S" prefix — never the ID
-  // token's `oid` UUID fallback (suppress it until /me provides the real value).
-  const isStaffUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(staffId ?? '');
-  const staffIdLabel = !staffId || isStaffUuid ? '' : /^s/i.test(staffId) ? staffId : `S${staffId}`;
+  // Staff number (Graph /me) with an "S" prefix. Empty when /me hasn't provided it.
+  const staffIdLabel = staffId && !/^s/i.test(staffId) ? `S${staffId}` : staffId ?? '';
   return (
     <View style={[styles.cardBody, { backgroundColor: surface }]}>
       <View style={[styles.accentStripe, { backgroundColor: accent }]} />

@@ -55,11 +55,12 @@ async function fetchGraphProfile(): Promise<Partial<User> | null> {
     const out: Partial<User> = {};
     if (me.givenName) out.firstName = me.givenName;
     if (me.surname) out.lastName = me.surname;
-    if (me.jobTitle) out.jobTitle = me.jobTitle;
-    if (me.department) out.department = me.department;
-    if (me.officeLocation) out.location = me.officeLocation;
+    // jobTitle / department / location are intentionally MOCKED (MOCK_HR) for the
+    // demo — do NOT overlay /me's real values here, or the mock never shows.
     if (me.mail || me.userPrincipalName) out.email = (me.mail ?? me.userPrincipalName)!;
-    if (me.employeeId) out.employeeId = me.employeeId;
+    // Graph /me `employeeId` is the DISPLAYED staff number (→ user.staffId), not
+    // the internal API id (which stays the ID-token oid on user.employeeId).
+    if (me.employeeId) out.staffId = me.employeeId;
     const phone = me.mobilePhone || me.businessPhones?.[0];
     if (phone) out.phone = phone;
     return out;

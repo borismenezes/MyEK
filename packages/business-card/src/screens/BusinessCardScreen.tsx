@@ -26,12 +26,10 @@ export default function BusinessCardScreen(): React.ReactElement {
   const organization = user?.organization ?? 'Emirates Group';
   const email = user?.email ?? '';
   const phone = user?.phone ?? '';
-  const rawStaffId = user?.employeeId ?? '';
-  // Show the REAL staff number (from Graph /me) only — never the ID token's `oid`
-  // UUID fallback. Until /me lands, employeeId may be the oid; suppress it (the
-  // reactive usePlatformUser re-renders the row in once /me overrides it).
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawStaffId);
-  const staffId = !rawStaffId || isUuid ? '' : /^s/i.test(rawStaffId) ? rawStaffId : `S${rawStaffId}`;
+  // Staff number is the host-published /me value (never the oid), displayed with
+  // an "S" prefix. Empty until /me returns it; reactive via usePlatformUser.
+  const rawStaffId = user?.staffId ?? '';
+  const staffId = rawStaffId && !/^s/i.test(rawStaffId) ? `S${rawStaffId}` : rawStaffId;
   const vCard = buildVCard({ fullName, organization, jobTitle, phone, email });
 
   return (
