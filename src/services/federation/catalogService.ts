@@ -1,8 +1,11 @@
 import { Platform } from 'react-native';
 import { apimClient } from '@api/apimClient';
 import { config } from '@/config';
+import { createLogger } from '@utils/logger';
 import type { ServiceDefinition } from './types';
 import { SHELL_VERSION } from './shellVersion';
+
+const log = createLogger('MF');
 
 /** A catalog widget entry — maps a home widgetId to its owning remote service. */
 export interface CatalogWidget {
@@ -34,7 +37,7 @@ export async function fetchServiceCatalog(): Promise<ServiceCatalogResponse> {
   // an error envelope returned with 200) — surface it instead of silently
   // coercing to "no services". A genuinely absent field is fine as empty.
   if (body && body.services !== undefined && !Array.isArray(body.services)) {
-    console.warn('[MF] catalog response malformed: `services` is not an array');
+    log.warn('mf.catalog.malformed', { reason: '`services` is not an array' });
   }
   return {
     services: Array.isArray(body?.services) ? body.services : [],

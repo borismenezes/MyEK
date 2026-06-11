@@ -6,10 +6,16 @@ import {
   type ModuleFederationRuntimePlugin,
 } from '@module-federation/runtime';
 import { config } from '@/config';
+import { createLogger } from '@utils/logger';
 import { evictAllCachedScripts } from '../scriptStorage';
 import { loadManifest, saveManifest } from './manifestCache';
 import { SHELL_VERSION, semverGte } from './shellVersion';
 import type { ServiceDefinition, ServiceMfCoords } from './types';
+
+// Structured federation telemetry. Message = stable event name (greppable,
+// sink-aggregatable once the logger's remote transport is real); meta = the
+// event payload. Hostnames only in payloads, never full URLs with paths.
+const log = createLogger('MF');
 
 /**
  * Runtime registration + loading of federated remotes for the MyEK host.
@@ -47,11 +53,11 @@ function isAllowedRemote(service: ServiceDefinition): boolean {
   try {
     parsed = new URL(url);
   } catch {
-    console.warn(`[MF] rejected unparseable manifest URL for "${service.id}"`);
+    log.warn('mf.register.rejected', { serviceId: service.id, reason: 'unparseable-url' });
     return false;
   }
   if (!__DEV__ && parsed.protocol !== 'https:') {
-    console.warn(`[MF] rejected non-https manifest for "${service.id}": ${url}`);
+    log.warn('mf.register.rejected', { serviceId: service.id, reason: 'non-https', host: parsed.hostname });
     return false;
   }
   // Host pinning. Prefer the configured allowlist; if it's empty, fall back to
@@ -61,7 +67,7 @@ function isAllowedRemote(service: ServiceDefinition): boolean {
     ? config.mf.allowedRemoteHosts
     : defaultAllowedHosts();
   if (!__DEV__ && allow.length > 0 && !allow.includes(parsed.hostname)) {
-    console.warn(`[MF] rejected disallowed host for "${service.id}": ${parsed.hostname}`);
+    log.warn('mf.register.rejected', { serviceId: service.id, reason: 'host-not-allowed', host: parsed.hostname });
     return false;
   }
   return true;
@@ -170,7 +176,7 @@ const manifestCachePlugin: ModuleFederationRuntimePlugin = {
         // refreshed. (Per-remote eviction can't be done reliably — see
         // evictAllCachedScripts.)
         chunkCacheClearedThisSession = true;
-        console.log(`[MF] integrity changed (${remoteName}) — clearing chunk cache so updated remotes re-download`);
+        log.info('mf.chunkcache.evicted', { remoteName, reason: 'integrity-changed' });
         await evictAllCachedScripts();
       }
       saveManifest(remoteName, json);
@@ -186,7 +192,7 @@ const manifestCachePlugin: ModuleFederationRuntimePlugin = {
     const remoteName = String(args.id).split('/')[0];
     const cached = loadManifest(remoteName);
     if (cached) {
-      console.warn(`[MF] manifest fetch failed; serving last-known-good for ${remoteName}`);
+      log.warn('mf.manifest.lkg.served', { remoteName });
       return cached;
     }
     return undefined;
@@ -198,7 +204,7 @@ export function initFederation(): void {
   if (initialised) return;
   init({ name: 'host', remotes: [], plugins: [manifestCachePlugin] });
   initialised = true;
-  console.log('[MF] runtime initialised');
+  log.info('mf.runtime.initialised');
 }
 
 /**
@@ -237,11 +243,11 @@ export function registerCatalogRemotes(services: ServiceDefinition[]): void {
   }
 
   if (brandNew.length) {
-    console.log('[MF] register:', brandNew.map(r => `${r.name}=${r.entry}`).join(', '));
+    log.info('mf.remotes.registered', { remotes: brandNew.map(r => r.name) });
     registerRemotes(brandNew);
   }
   if (versionChanged.length) {
-    console.log('[MF] register (force):', versionChanged.map(r => `${r.name}=${r.entry}`).join(', '));
+    log.info('mf.remotes.reregistered', { remotes: versionChanged.map(r => r.name) });
     registerRemotes(versionChanged, { force: true });
   }
 }
@@ -302,9 +308,33 @@ export async function loadExpose<T = unknown>(
   const normalised = exposePath.replace(/^\.\//, '');
   const request = `${service.mf.remoteName}/${normalised}`;
 
-  const mod = await loadRemote<T>(request);
+  const startedAt = Date.now();
+  let mod: T | null;
+  try {
+    mod = await loadRemote<T>(request);
+  } catch (err) {
+    log.warn('mf.load.failed', {
+      serviceId: service.id,
+      remoteName: service.mf.remoteName,
+      expose: key,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
   if (mod == null) {
+    log.warn('mf.load.failed', {
+      serviceId: service.id,
+      remoteName: service.mf.remoteName,
+      expose: key,
+      message: 'loadRemote returned null',
+    });
     throw new Error(`[MF] loadRemote("${request}") returned null.`);
   }
+  log.info('mf.load.ok', {
+    serviceId: service.id,
+    remoteName: service.mf.remoteName,
+    expose: key,
+    ms: Date.now() - startedAt,
+  });
   return mod;
 }

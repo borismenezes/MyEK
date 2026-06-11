@@ -4,7 +4,7 @@ import * as Repack from '@callstack/repack';
 import rspack from '@rspack/core';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import { loadBuildEnv } from './packages/sdk/rspack/load-env.mjs';
-import { resolveSharedVersions } from './packages/sdk/rspack/shared-versions.mjs';
+import { resolveSharedVersions, resolveWorkspaceVersions } from './packages/sdk/rspack/shared-versions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,10 +16,13 @@ loadBuildEnv(__dirname);
 // declared share-scope versions always match what it actually bundles. The
 // package list lives in packages/sdk/rspack/shared-versions.mjs.
 const SHARED_VERSIONS = resolveSharedVersions(__dirname);
+// Workspace singletons (@myek/platform, @myek/ui, @myek/api-client): the host
+// provides the canonical copy eagerly; remotes carry a fallback (remote-config).
+const WORKSPACE_VERSIONS = resolveWorkspaceVersions(__dirname);
 
 function getSharedDependencies({ eager }) {
   const out = {};
-  for (const [name, version] of Object.entries(SHARED_VERSIONS)) {
+  for (const [name, version] of Object.entries({ ...SHARED_VERSIONS, ...WORKSPACE_VERSIONS })) {
     out[name] = { singleton: true, eager, version, requiredVersion: version };
   }
   return out;

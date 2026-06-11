@@ -1,8 +1,8 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Icon, useTheme, usePlatformUser } from '@myek/ui';
-import { buildVCard, copyToClipboard } from '@myek/platform';
+import { buildVCard, Icon, useTheme, usePlatformUser } from '@myek/ui';
+import { copyToClipboard } from '@myek/platform';
 
 /**
  * Federated business-card FRONT — the `business_card` remote's `./screens`

@@ -1,4 +1,4 @@
-import type { WidgetComponent } from '../types';
+import type { WidgetExposeMap } from '@myek/sdk';
 import { IdentityCardWidget } from './IdentityCardWidget';
-const widgets: Record<string, WidgetComponent> = { businessCard: IdentityCardWidget };
+const widgets: WidgetExposeMap = { businessCard: IdentityCardWidget };
 export default widgets;

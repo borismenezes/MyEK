@@ -1,7 +1,10 @@
 import React, { Component, Suspense, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { createLogger } from '@utils/logger';
 import { EXPOSE_SCREENS, loadExpose, type ReservedExposeKey } from './dynamicRemotes';
 import type { ServiceDefinition } from './types';
+
+const log = createLogger('MF');
 
 /**
  * Mounts a federated remote's exposed component (default `./screens`) with a
@@ -74,7 +77,7 @@ class FederatedErrorBoundary extends Component<BoundaryProps, BoundaryState> {
   }
 
   componentDidCatch(error: Error): void {
-    console.warn(`[MF] remote "${this.props.serviceName}" failed to load:`, error.message);
+    log.warn('mf.remote.failed', { serviceName: this.props.serviceName, message: error.message });
   }
 
   render(): React.ReactNode {

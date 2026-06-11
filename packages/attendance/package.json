@@ -2,7 +2,7 @@
   "name": "@myek/attendance",
   "version": "0.1.0",
   "private": true,
-  "description": "MyEK Attendance mini-app — screens + widgets, federated as the `attendance` MF2 remote.",
+  "description": "MyEK Attendance mini-app \u2014 screens + widgets, federated as the `attendance` MF2 remote.",
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
@@ -10,6 +10,7 @@
     "./widgets": "./src/widgets/index.ts"
   },
   "dependencies": {
+    "@myek/sdk": "*",
     "@myek/ui": "*"
   }
 }
