@@ -35,6 +35,7 @@ export type IconName =
   | 'pin'
   | 'building'
   | 'arrow-right'
+  | 'logout'
   | 'drag'
   | 'sun'
   | 'moon'
@@ -273,6 +274,13 @@ export const Icon: React.FC<IconProps> = ({ name, size = 18, color, stroke = 1.8
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24">
           <Path {...p} d="M5 12h14M13 6l6 6-6 6" />
+        </Svg>
+      );
+    case 'logout':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Path {...p} d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <Path {...p} d="M16 17l5-5-5-5M21 12H9" />
         </Svg>
       );
     case 'drag':

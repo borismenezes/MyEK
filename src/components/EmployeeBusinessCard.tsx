@@ -23,7 +23,7 @@ import { Icon } from './Icon';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const CARD_HORIZONTAL_PADDING = 28;
+const CARD_HORIZONTAL_PADDING = 38;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_PADDING * 2;
 // Portrait — holds the business-card front (photo + identity + contact + QR).
 // Compact popup (~70% of the old footprint): narrower via the wider side padding
@@ -130,25 +130,34 @@ export const EmployeeBusinessCard: React.FC<EmployeeBusinessCardProps> = ({ visi
             <Text style={{ fontSize: 22, fontWeight: '700', color: theme.colors.ink, letterSpacing: -0.4 }}>
               Business Card
             </Text>
-            <Text style={{ fontSize: 12, color: theme.colors.muted, marginTop: 2 }}>
-              Scan the QR to save contact
-            </Text>
           </View>
           <Pressable
             onPress={onClose}
+            accessibilityLabel="Close"
+            hitSlop={8}
             style={({ pressed }) => ({
-              backgroundColor: theme.colors.ekRed,
-              paddingHorizontal: 14,
-              paddingVertical: 6,
-              borderRadius: 999,
-              opacity: pressed ? 0.85 : 1,
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.colors.line,
+              opacity: pressed ? 0.6 : 1,
             })}>
-            <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Done</Text>
+            <Icon name="close" size={18} color={theme.colors.mutedStrong} />
           </Pressable>
         </View>
 
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: CARD_HORIZONTAL_PADDING, paddingBottom: 32, alignItems: 'center' }}
+          contentContainerStyle={{
+            paddingHorizontal: CARD_HORIZONTAL_PADDING,
+            paddingVertical: 24,
+            alignItems: 'center',
+            // Centre the card in the available sheet space (grows to fill, then
+            // centres) rather than pinning it under the header.
+            flexGrow: 1,
+            justifyContent: 'center',
+          }}
           showsVerticalScrollIndicator={false}>
           <View style={[styles.card, { width: CARD_WIDTH, height: CARD_HEIGHT }]}>
             {federateCard ? (
@@ -160,7 +169,6 @@ export const EmployeeBusinessCard: React.FC<EmployeeBusinessCardProps> = ({ visi
                 organization={company}
                 email={user.email}
                 phone={user.phone}
-                staffId={user.employeeId}
                 surface={theme.colors.surface}
                 line={theme.colors.line}
                 accent={theme.colors.ekRed}
@@ -190,7 +198,6 @@ interface FrontFaceProps {
   organization: string;
   email: string;
   phone?: string;
-  staffId?: string;
   surface: string;
   line: string;
   accent: string;
@@ -206,7 +213,6 @@ const FrontFace: React.FC<FrontFaceProps> = ({
   organization,
   email,
   phone,
-  staffId,
   surface,
   line,
   accent,
@@ -216,10 +222,6 @@ const FrontFace: React.FC<FrontFaceProps> = ({
   inkSecondary,
 }) => {
   const vCard = vCardService.build({ fullName, organization, jobTitle, phone: phone ?? '', email });
-  // Show the REAL staff number (Graph /me) with an "S" prefix — never the ID
-  // token's `oid` UUID fallback (suppress it until /me provides the real value).
-  const isStaffUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(staffId ?? '');
-  const staffIdLabel = !staffId || isStaffUuid ? '' : /^s/i.test(staffId) ? staffId : `S${staffId}`;
   return (
     <View style={[styles.cardBody, { backgroundColor: surface }]}>
       <View style={[styles.accentStripe, { backgroundColor: accent }]} />
@@ -252,18 +254,8 @@ const FrontFace: React.FC<FrontFaceProps> = ({
           {phone ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Icon name="phone" size={16} color={ekRedDark} />
-              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
+              <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
                 {phone}
-              </Text>
-            </View>
-          ) : null}
-          {staffIdLabel ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View style={{ width: 16, alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: ekRedDark, letterSpacing: 0.3 }}>ID</Text>
-              </View>
-              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
-                {staffIdLabel}
               </Text>
             </View>
           ) : null}

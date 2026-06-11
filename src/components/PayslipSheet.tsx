@@ -112,7 +112,7 @@ export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) 
   if (!mounted && !visible) return null;
 
   const data = fetched ?? (payslipDefault as PayslipDocumentPayload);
-  const employeeNumber = user?.employeeId ?? data.employeeNumber;
+  const employeeNumber = user?.staffId || data.employeeNumber;
   const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : data.employeeName;
   const employeeName = fullName.length > 0 ? fullName.toUpperCase() : data.employeeName;
 

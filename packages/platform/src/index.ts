@@ -14,8 +14,8 @@ export interface PlatformUser {
   email?: string;
   jobTitle?: string;
   organization?: string;
-  /** Staff/employee ID — shown on the business card. */
-  employeeId?: string;
+  /** Displayed staff number (Graph /me employeeId) — shown on the business card. */
+  staffId?: string;
   /** Work phone (Graph /me). Shown on the business card when present. */
   phone?: string;
   /** Optional avatar image URI/data-URI; remotes render initials when absent. */

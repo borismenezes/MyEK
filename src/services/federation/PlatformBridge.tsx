@@ -42,7 +42,7 @@ export function PlatformBridge(): null {
             email: user.email,
             jobTitle: user.jobTitle,
             organization: 'Emirates Group',
-            employeeId: user.employeeId,
+            staffId: user.staffId,
             phone: user.phone,
             photoUri: photo && photo.base64 ? `data:${photo.mimeType};base64,${photo.base64}` : undefined,
           }

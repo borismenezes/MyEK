@@ -89,7 +89,7 @@ export const MoreScreen: React.FC = () => {
               styles.signOut,
               { backgroundColor: theme.colors.surface, opacity: pressed ? 0.85 : 1 },
             ]}>
-            <Icon name="arrow-right" size={16} color={theme.colors.ekRed} />
+            <Icon name="logout" size={16} color={theme.colors.ekRed} />
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ekRed }}>Sign Out</Text>
           </Pressable>
 
@@ -233,7 +233,6 @@ const SupportItem: React.FC<SupportRow & { divider: boolean }> = ({ icon, title,
         <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>{title}</Text>
         <Text style={{ fontSize: 12, color: theme.colors.muted, marginTop: 2 }}>{subtitle}</Text>
       </View>
-      <Icon name="chevron" size={14} color={theme.colors.muted} />
     </Pressable>
   );
 };
