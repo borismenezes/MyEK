@@ -4,6 +4,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { useAuthStore } from '@store/useAuthStore';
 import { useUIStore } from '@store/useUIStore';
 import {
+  publishBridgeProtocol,
   setActiveTheme,
   setCopyToClipboard,
   setOpenProfile,
@@ -26,6 +27,13 @@ export function PlatformBridge(): null {
   const photo = useAuthStore(s => s.photo);
   const openIdSheet = useUIStore(s => s.setIdSheetVisible);
   const theme = useTheme();
+
+  // Declare which bridge protocol this shell speaks, before any slot is
+  // populated — remotes compare it against their compiled-in copy
+  // (checkBridgeProtocol) to catch contract drift instead of failing silently.
+  useEffect(() => {
+    publishBridgeProtocol();
+  }, []);
 
   // Republish the active theme on every light/dark toggle so federated UI
   // (which reads it via @myek/ui's useTheme) re-renders in step with the host.

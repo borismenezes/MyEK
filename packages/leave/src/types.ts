@@ -1,26 +1,9 @@
-import type React from 'react';
-
 /**
- * Local mirror of the host's widget contract (src/types/widgets.ts). Duplicated
- * here so the remote doesn't import host `src/*`. When @myek/shared-types is
- * extracted, these move there and both sides import the singleton.
+ * Widget contract comes from @myek/sdk — the cross-bundle type contract shared
+ * with the host (compile-time only; types are erased). Payload types below are
+ * this remote's own.
  */
-export interface WidgetConfig {
-  size?: 'small' | 'medium' | 'large';
-  [key: string]: unknown;
-}
-
-export interface WidgetProps<T = unknown> {
-  config: WidgetConfig;
-  data: T | null;
-  loading: boolean;
-  error: string | null;
-  isStale: boolean;
-  onRefresh: () => void;
-  preview?: boolean;
-}
-
-export type WidgetComponent = React.ComponentType<WidgetProps<any>>;
+export type { WidgetConfig, WidgetProps, WidgetComponent } from '@myek/sdk';
 
 export interface LeaveBalancePayload {
   total: number;

@@ -56,23 +56,28 @@ const WidgetRendererImpl: React.FC<WidgetRendererProps> = ({ config, preview = f
   // listener. Initial state is hydrated synchronously from the cache.
   const { data, loading, error, isStale, refresh } = useWidgetData<unknown>(config, { skip: preview });
 
-  if (!entry) return <UnknownWidget widgetId={config.widgetId} />;
-  if (!hasPermission) return null;
-
-  const Component = entry.component;
-  const widgetProps = { config, data, loading, error, isStale, onRefresh: refresh, preview };
   // Federate when the catalog says so (and not in the edit-drawer preview).
   // FederatedWidget falls back to the in-host Component while loading / on failure.
   const federate = !preview && appConfig.mf.enabled && !!remoteService;
+
+  // A widgetId with no registry entry is renderable IFF the catalog maps it to
+  // a federated remote — that's the "new service ships a widget without a host
+  // release" path (skeleton while loading, no in-host twin to fall back to).
+  // Without a remote it stays the legacy behind-on-releases placeholder.
+  if (!entry && !federate) return <UnknownWidget widgetId={config.widgetId} />;
+  if (!hasPermission) return null;
+
+  const Component = entry?.component;
+  const widgetProps = { config, data, loading, error, isStale, onRefresh: refresh, preview };
 
   return (
     <WidgetShell
       size={config.layout.size}
       loading={loading && !data}
       error={!data ? error : null}
-      isStale={entry.hideStaleIndicator ? false : isStale}
+      isStale={entry?.hideStaleIndicator ? false : isStale}
       onRetry={refresh}
-      bare={!entry.surface}>
+      bare={entry ? !entry.surface : false}>
       {/* Isolate each widget: a render throw (e.g. a payload field the tile
           doesn't expect) must degrade to a fallback tile, never crash the
           whole app. resetKey=data lets a refreshed payload re-attempt render. */}
@@ -85,7 +90,7 @@ const WidgetRendererImpl: React.FC<WidgetRendererProps> = ({ config, preview = f
             widgetProps={widgetProps}
           />
         ) : (
-          <Component {...widgetProps} />
+          Component && <Component {...widgetProps} />
         )}
       </WidgetErrorBoundary>
     </WidgetShell>

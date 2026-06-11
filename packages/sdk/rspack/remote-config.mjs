@@ -12,18 +12,17 @@ import rspack from '@rspack/core';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import { MfIntegrityPlugin } from './mf-integrity-plugin.mjs';
 import { loadBuildEnv } from './load-env.mjs';
-import { resolveSharedVersions } from './shared-versions.mjs';
-
-// MyEK workspace singletons — bundle a small fallback so the singleton getter
-// resolves. Empty until the design-system packages (@myek/ui, @myek/platform,
-// @myek/api-client) are extracted; remotes are self-contained until then.
-const SHARED_VERSIONS_WORKSPACE = {};
+import { resolveSharedVersions, resolveWorkspaceVersions } from './shared-versions.mjs';
 
 // Host-provided singletons (import:false) — the host bundles these eagerly and
 // registers the shared scope before any remote loads, so a remote never needs
-// its own fallback copy. Versions are resolved from the installed packages
-// (same node_modules the host builds from), so host and remotes agree by
-// construction. Package list: ./shared-versions.mjs.
+// its own fallback copy. Workspace singletons (@myek/platform, @myek/ui,
+// @myek/api-client) differ: the remote bundles a small FALLBACK copy
+// (import defaults true) so it still renders standalone — at runtime the
+// host's registered copy wins the singleton resolution. Versions for both
+// groups are resolved from the installed packages (same node_modules the host
+// builds from), so host and remotes agree by construction. Package lists:
+// ./shared-versions.mjs.
 function getRemoteSharedDependencies(rootDir) {
   const out = {};
   for (const [name, version] of Object.entries(resolveSharedVersions(rootDir))) {
@@ -35,7 +34,7 @@ function getRemoteSharedDependencies(rootDir) {
       import: false,
     };
   }
-  for (const [name, version] of Object.entries(SHARED_VERSIONS_WORKSPACE)) {
+  for (const [name, version] of Object.entries(resolveWorkspaceVersions(rootDir))) {
     out[name] = { singleton: true, eager: false, version, requiredVersion: version };
   }
   return out;

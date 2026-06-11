@@ -3,6 +3,8 @@ import { useAuthStore } from '@store/useAuthStore';
 import { useCatalogStore } from '@store/useCatalogStore';
 import { versionRegistry, setAccessTokenGetter, setUnauthorizedHandler } from '@api/index';
 import { setApimTokenAcquirer } from '@api/apimClient';
+import { setApiBaseUrl, setTokenGetter } from '@myek/api-client';
+import { config } from '@/config';
 import { profilePictureService } from '@services/profilePictureService';
 import { graphProfileService } from '@services/graphProfileService';
 import { userService } from '@services/userService';
@@ -134,19 +136,33 @@ export function wireApiAuth(): void {
   // the burst of parallel widget fetches at launch → requests went out with no
   // Authorization header → Kong 401 → widgets fell back to mocks. Refresh only
   // when the cached token is actually expired.
-  setApimTokenAcquirer(async () => {
-    const session = useAuthStore.getState().session;
-    if (!session) return null;
-    if (Date.now() >= session.expiresAt) {
-      const refreshed = await intuneAdapter.refresh(session.refreshToken);
-      if (refreshed) {
-        persistSession(refreshed);
-        useAuthStore.getState().updateSession(refreshed);
-        return refreshed.accessToken;
-      }
+  setApimTokenAcquirer(acquireBffToken);
+  // Cross-bundle client (@myek/api-client, ADR-0022): federated remotes fetch
+  // their own data through globalThis-slot config the host publishes here —
+  // same single token + BFF base as the host's own clients.
+  setApiBaseUrl(config.apim.baseUrl);
+  setTokenGetter(acquireBffToken);
+}
+
+/**
+ * Single-token acquirer shared by the host's BFF client and the cross-bundle
+ * @myek/api-client: the cached session token, refreshed only when actually
+ * expired. Per-call silent MSAL acquisition is deliberately avoided — it
+ * returned null under the parallel widget-fetch burst at launch (see the
+ * wireApiAuth comment above).
+ */
+async function acquireBffToken(): Promise<string | null> {
+  const session = useAuthStore.getState().session;
+  if (!session) return null;
+  if (Date.now() >= session.expiresAt) {
+    const refreshed = await intuneAdapter.refresh(session.refreshToken);
+    if (refreshed) {
+      persistSession(refreshed);
+      useAuthStore.getState().updateSession(refreshed);
+      return refreshed.accessToken;
     }
-    return session.accessToken;
-  });
+  }
+  return session.accessToken;
 }
 
 export async function signIn(): Promise<LoginResult> {
@@ -268,6 +284,9 @@ export async function signOut(): Promise<void> {
   // Clear in-memory state
   useAuthStore.getState().clear();
   versionRegistry.clear();
+  // Federation teardown: the next account must not inherit this account's
+  // catalog maps, cached catalog, or MF remote registrations.
+  useCatalogStore.getState().reset();
 
   // Clear persisted session + bootstrap (but keep prefs like theme + cache —
   // cache is wiped separately if compliance demands it)

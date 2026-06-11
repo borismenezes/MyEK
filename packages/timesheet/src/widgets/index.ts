@@ -1,4 +1,4 @@
-import type { WidgetComponent } from '../types';
+import type { WidgetExposeMap } from '@myek/sdk';
 import { TimesheetWidget } from './TimesheetWidget';
-const widgets: Record<string, WidgetComponent> = { timesheet: TimesheetWidget };
+const widgets: WidgetExposeMap = { timesheet: TimesheetWidget };
 export default widgets;

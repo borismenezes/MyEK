@@ -29,10 +29,22 @@ export const SHARED_PACKAGES = [
   // Large/native singletons used by both shell and remotes.
   'react-native-svg',
   'react-native-mmkv',
-  // MyEK workspace singletons — added as each package lands:
-  //   '@myek/ui':       theme tokens + shared components
-  //   '@myek/platform': shell/auth context (the singleton remotes bind to)
-  //   '@myek/api-client': shared HTTP client (cross-bundle token-getter)
+];
+
+/**
+ * MyEK workspace singletons. Shared so host + remotes resolve ONE copy at
+ * runtime (the host's, registered eagerly); each remote still bundles a
+ * fallback copy so it renders standalone (dev server, host predating the
+ * package). Versions resolve from the workspace symlinks in node_modules —
+ * the same `resolveSharedVersions` path as the npm packages above.
+ *
+ * @myek/sdk is intentionally absent: it's build tooling + type-only contracts
+ * (erased at compile time), nothing to share at runtime.
+ */
+export const WORKSPACE_PACKAGES = [
+  '@myek/platform', // globalThis bridge slots (user/theme/actions)
+  '@myek/ui', // theme tokens + shared components
+  '@myek/api-client', // shared HTTP client (cross-bundle token-getter)
 ];
 
 /**
@@ -47,6 +59,22 @@ export function resolveSharedVersions(rootDir) {
   const require = createRequire(path.join(rootDir, 'package.json'));
   const out = {};
   for (const name of SHARED_PACKAGES) {
+    out[name] = readVersion(require, rootDir, name);
+  }
+  return out;
+}
+
+/**
+ * Resolve the installed version of every workspace singleton (npm workspaces
+ * symlink them under node_modules, so the same lookup applies). Kept separate
+ * from `resolveSharedVersions` because host and remotes configure the two
+ * groups differently (workspace packages keep a bundled fallback in remotes;
+ * npm singletons are host-provided `import:false`).
+ */
+export function resolveWorkspaceVersions(rootDir) {
+  const require = createRequire(path.join(rootDir, 'package.json'));
+  const out = {};
+  for (const name of WORKSPACE_PACKAGES) {
     out[name] = readVersion(require, rootDir, name);
   }
   return out;

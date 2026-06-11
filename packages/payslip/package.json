@@ -2,12 +2,15 @@
   "name": "@myek/payslip",
   "version": "0.1.0",
   "private": true,
-  "description": "MyEK Payslip mini-app — federated as the `payslip` MF2 remote.",
+  "description": "MyEK Payslip mini-app \u2014 federated as the `payslip` MF2 remote.",
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./screens": "./src/screens/index.ts",
     "./widgets": "./src/widgets/index.ts"
   },
-  "dependencies": { "@myek/ui": "*" }
+  "dependencies": {
+    "@myek/sdk": "*",
+    "@myek/ui": "*"
+  }
 }
