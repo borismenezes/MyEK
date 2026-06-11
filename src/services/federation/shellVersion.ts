@@ -3,7 +3,7 @@
  * `minShellVersion` exceeds this is filtered out before the user can reach it.
  * Matches the in-app version string (`MyEk · vX.Y.Z`).
  */
-export const SHELL_VERSION = '4.2.1';
+export const SHELL_VERSION = '4.3.0';
 
 /**
  * `a >= b` for dotted numeric versions (e.g. '4.2.1'). Pre-release/build
