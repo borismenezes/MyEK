@@ -2,6 +2,7 @@ export * from './widgetService';
 export * from './homeService';
 export * from './userService';
 export * from './profilePictureService';
+export * from './graphProfileService';
 export * from './applicationsManifestService';
 export * from './appDataService';
 export * from './platinumService';

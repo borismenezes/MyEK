@@ -4,6 +4,7 @@ import { useCatalogStore } from '@store/useCatalogStore';
 import { versionRegistry, setAccessTokenGetter, setUnauthorizedHandler } from '@api/index';
 import { setApimTokenAcquirer } from '@api/apimClient';
 import { profilePictureService } from '@services/profilePictureService';
+import { graphProfileService } from '@services/graphProfileService';
 import { userService } from '@services/userService';
 import { stores, json } from '@utils/storage';
 import { createLogger } from '@utils/logger';
@@ -101,6 +102,12 @@ async function backgroundRefresh(refreshToken: string): Promise<void> {
     }
     persistSession(refreshed);
     useAuthStore.getState().updateSession(refreshed);
+    // Self-heal the catalog: the launch-time `load()` (hydrateAuth) fired with
+    // the still-expired token and likely 401'd → empty catalog → every widget
+    // rendered in-host. Now that we hold a fresh token, reload it. WidgetRenderer
+    // subscribes to `widgetToService`, so a populated catalog flips each tile to
+    // its federated remote — no manual re-login needed.
+    void useCatalogStore.getState().load();
   } catch (e) {
     log.warn('Background refresh threw', e);
   }
@@ -167,18 +174,27 @@ export async function signIn(): Promise<LoginResult> {
  * already-rendered cached profile and are logged, not surfaced.
  */
 async function refreshUserProfile(): Promise<void> {
-  const employeeId = useAuthStore.getState().user?.employeeId;
-  if (!employeeId) return;
+  if (!useAuthStore.getState().user) return;
   try {
-    const fresh = await userService.fetch(employeeId);
-    // Merge (don't replace): keep the signed-in account's name + the bundled HR
-    // fields wherever the API doesn't supply a value, so a sparse /user payload
-    // can't blank the greeting name or job title.
-    const current = useAuthStore.getState().user;
-    useAuthStore.getState().setUser(current ? mergeUser(current, fresh) : fresh);
-    log.debug('User profile refreshed from API');
+    // 1) Real profile fields from Microsoft Graph `/me` (jobTitle, department,
+    //    location, name, email) so the signed-in user sees their OWN data, not
+    //    the bundled demo persona. Returns a partial — real values win, and
+    //    fields Graph doesn't carry are left untouched. null on failure.
+    const graphProfile = await graphProfileService.fetch();
+    if (graphProfile) {
+      useAuthStore.getState().setUser(mergeUser(useAuthStore.getState().user!, graphProfile));
+    }
+    // 2) Emirates HR API for the EK-specific fields Graph can't supply (grade,
+    //    eligibilities, joinedAt). Returns null on failure — never the demo
+    //    persona — so it can't clobber the real identity from step 1.
+    const employeeId = useAuthStore.getState().user?.employeeId;
+    if (employeeId) {
+      const hr = await userService.fetch(employeeId);
+      if (hr) useAuthStore.getState().setUser(mergeUser(useAuthStore.getState().user!, hr));
+    }
+    log.debug('User profile refreshed (Graph /me + HR)');
   } catch (e) {
-    log.warn('Background user-profile refresh failed', e);
+    log.warn('Background user-profile refresh failed — real identity kept', e);
   }
 }
 
