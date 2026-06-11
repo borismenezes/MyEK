@@ -39,14 +39,14 @@ export const FaqPills: React.FC<FaqPillsProps> = ({ questions, onPick }) => {
             style={({ pressed }) => [
               styles.pill,
               {
-                // Subtle Emirates-red tint (same brand affordance used on the
-                // Services icons) — clearly non-white and professional.
-                backgroundColor: 'rgba(198,12,48,0.08)',
-                borderColor: 'rgba(198,12,48,0.22)',
+                // Neutral, secondary affordance — greyish, recedes behind the
+                // conversation rather than competing with the brand red.
+                backgroundColor: theme.colors.line,
+                borderColor: theme.colors.line,
                 opacity: pressed ? 0.6 : 1,
               },
             ]}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.ekRed }}>
+            <Text style={{ fontSize: 13, fontWeight: '400', color: theme.colors.mutedStrong }}>
               {q.pill}
             </Text>
           </Pressable>

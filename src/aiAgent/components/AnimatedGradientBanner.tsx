@@ -34,7 +34,7 @@ interface AnimatedGradientBannerProps {
 export const AnimatedGradientBanner: React.FC<AnimatedGradientBannerProps> = ({
   height = 200,
   title = 'AI Agent',
-  subtitle = 'Ask me anything — leave, payslip, meetings, Jira.',
+  subtitle = 'Ask me anything — leave.',
 }) => {
   const progress = useSharedValue(0);
 

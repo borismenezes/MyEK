@@ -55,11 +55,13 @@ export const AiAgentScreen: React.FC = () => {
           <ChatPanel messages={messages} />
         </View>
         {/* Suggestion pills sit directly above the composer as a quick-action
-            row, so they're reachable next to the input rather than stranded
-            under the banner. */}
-        <View style={{ paddingTop: 10, paddingBottom: 8 }}>
-          <FaqPills questions={AGENT_QUESTIONS} onPick={handlePick} />
-        </View>
+            row — only while the conversation is empty; they fall away once the
+            user starts interacting so the chat owns the space. */}
+        {messages.length === 0 ? (
+          <View style={{ paddingTop: 10, paddingBottom: 8 }}>
+            <FaqPills questions={AGENT_QUESTIONS} onPick={handlePick} />
+          </View>
+        ) : null}
         <ChatComposer
           onSubmit={handleSubmit}
           onMicPress={handleMicPress}
