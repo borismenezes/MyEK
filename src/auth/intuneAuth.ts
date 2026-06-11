@@ -50,11 +50,13 @@ const log = createLogger('Auth/Intune');
  */
 const MOCK_HR: Pick<
   User,
-  'jobTitle' | 'department' | 'location' | 'grade' | 'joinedAt' | 'eligibilities'
+  'jobTitle' | 'department' | 'location' | 'phone' | 'grade' | 'joinedAt' | 'eligibilities'
 > = {
   jobTitle: 'Technology Experience Specialist',
   department: 'EMIRATES GROUP IT-EIT',
   location: 'EK Tech Centre',
+  // Same mocked number the home widget shows (businessCard.json) — /me has none.
+  phone: '+971 50 123 4567',
   grade: 'EK.08',
   joinedAt: '2025-11-01T00:00:00Z',
   eligibilities: [

@@ -26,10 +26,6 @@ export default function BusinessCardScreen(): React.ReactElement {
   const organization = user?.organization ?? 'Emirates Group';
   const email = user?.email ?? '';
   const phone = user?.phone ?? '';
-  // Staff number is the host-published /me value (never the oid), displayed with
-  // an "S" prefix. Empty until /me returns it; reactive via usePlatformUser.
-  const rawStaffId = user?.staffId ?? '';
-  const staffId = rawStaffId && !/^s/i.test(rawStaffId) ? `S${rawStaffId}` : rawStaffId;
   const vCard = buildVCard({ fullName, organization, jobTitle, phone, email });
 
   return (
@@ -74,21 +70,8 @@ export default function BusinessCardScreen(): React.ReactElement {
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
               accessibilityLabel={`Copy phone ${phone}`}>
               <Icon name="phone" size={16} color={theme.colors.ekRedDark} />
-              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: theme.colors.inkSecondary }} numberOfLines={1}>
+              <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: theme.colors.inkSecondary }} numberOfLines={1}>
                 {phone}
-              </Text>
-            </Pressable>
-          ) : null}
-          {staffId ? (
-            <Pressable
-              onPress={() => copyToClipboard(staffId, 'Staff ID')}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
-              accessibilityLabel={`Copy staff ID ${staffId}`}>
-              <View style={{ width: 16, alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.ekRedDark, letterSpacing: 0.3 }}>ID</Text>
-              </View>
-              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: theme.colors.inkSecondary }} numberOfLines={1}>
-                {staffId}
               </Text>
             </Pressable>
           ) : null}

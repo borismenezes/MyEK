@@ -23,7 +23,7 @@ import { Icon } from './Icon';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const CARD_HORIZONTAL_PADDING = 28;
+const CARD_HORIZONTAL_PADDING = 38;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_HORIZONTAL_PADDING * 2;
 // Portrait — holds the business-card front (photo + identity + contact + QR).
 // Compact popup (~70% of the old footprint): narrower via the wider side padding
@@ -149,7 +149,15 @@ export const EmployeeBusinessCard: React.FC<EmployeeBusinessCardProps> = ({ visi
         </View>
 
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: CARD_HORIZONTAL_PADDING, paddingBottom: 32, alignItems: 'center' }}
+          contentContainerStyle={{
+            paddingHorizontal: CARD_HORIZONTAL_PADDING,
+            paddingVertical: 24,
+            alignItems: 'center',
+            // Centre the card in the available sheet space (grows to fill, then
+            // centres) rather than pinning it under the header.
+            flexGrow: 1,
+            justifyContent: 'center',
+          }}
           showsVerticalScrollIndicator={false}>
           <View style={[styles.card, { width: CARD_WIDTH, height: CARD_HEIGHT }]}>
             {federateCard ? (
@@ -161,7 +169,6 @@ export const EmployeeBusinessCard: React.FC<EmployeeBusinessCardProps> = ({ visi
                 organization={company}
                 email={user.email}
                 phone={user.phone}
-                staffId={user.staffId}
                 surface={theme.colors.surface}
                 line={theme.colors.line}
                 accent={theme.colors.ekRed}
@@ -191,7 +198,6 @@ interface FrontFaceProps {
   organization: string;
   email: string;
   phone?: string;
-  staffId?: string;
   surface: string;
   line: string;
   accent: string;
@@ -207,7 +213,6 @@ const FrontFace: React.FC<FrontFaceProps> = ({
   organization,
   email,
   phone,
-  staffId,
   surface,
   line,
   accent,
@@ -217,8 +222,6 @@ const FrontFace: React.FC<FrontFaceProps> = ({
   inkSecondary,
 }) => {
   const vCard = vCardService.build({ fullName, organization, jobTitle, phone: phone ?? '', email });
-  // Staff number (Graph /me) with an "S" prefix. Empty when /me hasn't provided it.
-  const staffIdLabel = staffId && !/^s/i.test(staffId) ? `S${staffId}` : staffId ?? '';
   return (
     <View style={[styles.cardBody, { backgroundColor: surface }]}>
       <View style={[styles.accentStripe, { backgroundColor: accent }]} />
@@ -251,18 +254,8 @@ const FrontFace: React.FC<FrontFaceProps> = ({
           {phone ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Icon name="phone" size={16} color={ekRedDark} />
-              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
+              <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
                 {phone}
-              </Text>
-            </View>
-          ) : null}
-          {staffIdLabel ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View style={{ width: 16, alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: ekRedDark, letterSpacing: 0.3 }}>ID</Text>
-              </View>
-              <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: inkSecondary }} numberOfLines={1}>
-                {staffIdLabel}
               </Text>
             </View>
           ) : null}
