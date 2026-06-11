@@ -1,4 +1,6 @@
+import { useSyncExternalStore } from 'react';
 import type { TextStyle } from 'react-native';
+import { getActiveTheme, subscribeTheme } from '@myek/platform';
 
 export { Icon } from './Icon';
 export type { IconName } from './Icon';
@@ -8,10 +10,12 @@ export type { IconName } from './Icon';
  * shape, and widget typography — so a federated remote's UI matches the host
  * exactly instead of hard-coding hexes.
  *
- * Slice 1 exposes the *static* light theme (the app default). Slice 2 will share
- * the ThemeProvider/useTheme context as an MF singleton so remotes react to
- * light/dark + brand switching. Mirrors `src/theme/tokens.ts` (light) — keep in
- * sync until the host's tokens are unified onto this package.
+ * The exported `theme` constant is the *static light* palette — the safe default
+ * when a remote renders outside the host (standalone dev server, or before the
+ * host has published). For live light/dark, components call `useTheme()`, which
+ * reads the host's active theme off the `@myek/platform` bridge and re-renders on
+ * toggle. Mirrors `src/theme/tokens.ts` (light) — keep in sync until the host's
+ * tokens are unified onto this package.
  */
 export interface ThemeColors {
   ekRed: string;
@@ -74,6 +78,18 @@ export const theme = {
 } as const;
 
 export type Theme = typeof theme;
+
+/**
+ * Active theme for federated UI. Subscribes to the host's published theme via
+ * the `@myek/platform` bridge, so a component re-renders when the user toggles
+ * light/dark. Falls back to the static light `theme` when the host hasn't
+ * published (standalone remote, or pre-bridge render). Use this instead of
+ * importing the static `theme` wherever colours must follow the host.
+ */
+export function useTheme(): Theme {
+  const active = useSyncExternalStore(subscribeTheme, getActiveTheme, getActiveTheme);
+  return (active as unknown as Theme) ?? theme;
+}
 
 /** Widget typography scale (mirrors src/theme/widgetTheme.ts). */
 export const widgetTheme = {

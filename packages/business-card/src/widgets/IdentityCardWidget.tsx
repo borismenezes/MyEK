@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Icon, theme, widgetTheme } from '@myek/ui';
+import { Icon, useTheme, widgetTheme } from '@myek/ui';
 import { buildVCard, getPlatformUser, openProfile } from '@myek/platform';
 import type { BusinessCardPayload, WidgetProps } from '../types';
 
@@ -15,6 +15,7 @@ import type { BusinessCardPayload, WidgetProps } from '../types';
  * props (BusinessCardPayload). (The share chip is omitted in the remote.)
  */
 export const IdentityCardWidget: React.FC<WidgetProps<BusinessCardPayload>> = ({ data }) => {
+  const theme = useTheme();
   if (!data) return null;
   return (
     <View style={{ flex: 1, marginHorizontal: -16, marginTop: -16, marginBottom: -16 }}>
@@ -28,6 +29,7 @@ export const IdentityCardWidget: React.FC<WidgetProps<BusinessCardPayload>> = ({
 };
 
 const FrontFace: React.FC<{ data: BusinessCardPayload }> = ({ data }) => {
+  const theme = useTheme();
   const user = getPlatformUser();
   const fullName =
     user && (user.firstName || user.lastName) ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : data.fullName;
@@ -76,6 +78,7 @@ const FrontFace: React.FC<{ data: BusinessCardPayload }> = ({ data }) => {
 };
 
 const Avatar: React.FC<{ size: number; name: string; photoUri?: string }> = ({ size, name, photoUri }) => {
+  const theme = useTheme();
   const radius = size / 2;
   const ring = {
     shadowColor: theme.colors.ekRed,

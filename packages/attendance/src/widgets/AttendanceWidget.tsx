@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { Icon, theme, widgetTheme } from '@myek/ui';
+import { Icon, useTheme, widgetTheme } from '@myek/ui';
 import type { AttendancePayload, WidgetProps } from '../types';
 
 /**
@@ -15,25 +15,29 @@ export const AttendanceWidget: React.FC<WidgetProps<AttendancePayload>> = ({ con
   return size === 'small' ? <RingSmall data={data} /> : <RingLarge data={data} />;
 };
 
-const RingSmall: React.FC<{ data: AttendancePayload }> = ({ data }) => (
-  <View style={{ flex: 1 }}>
-    <Header />
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Ring size={76} percent={75}>
-        <Text style={{ fontSize: widgetTheme.fontSize.value, fontWeight: widgetTheme.fontWeight.heavy, color: theme.colors.ink }}>{formatMinutes(data.todayDurationMinutes)}</Text>
-        <Text style={{ fontSize: widgetTheme.fontSize.xs, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.muted, letterSpacing: 0.3 }}>TODAY</Text>
-      </Ring>
+const RingSmall: React.FC<{ data: AttendancePayload }> = ({ data }) => {
+  const theme = useTheme();
+  return (
+    <View style={{ flex: 1 }}>
+      <Header />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Ring size={76} percent={75}>
+          <Text style={{ fontSize: widgetTheme.fontSize.value, fontWeight: widgetTheme.fontWeight.heavy, color: theme.colors.ink }}>{formatMinutes(data.todayDurationMinutes)}</Text>
+          <Text style={{ fontSize: widgetTheme.fontSize.xs, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.muted, letterSpacing: 0.3 }}>TODAY</Text>
+        </Ring>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Dot on={data.checkedIn} />
+        <Text style={{ fontSize: widgetTheme.fontSize.caption, color: theme.colors.muted }}>
+          {data.checkedIn ? `Checked in · ${formatTime(data.checkInAt)}` : 'Not checked in'}
+        </Text>
+      </View>
     </View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <Dot on={data.checkedIn} />
-      <Text style={{ fontSize: widgetTheme.fontSize.caption, color: theme.colors.muted }}>
-        {data.checkedIn ? `Checked in · ${formatTime(data.checkInAt)}` : 'Not checked in'}
-      </Text>
-    </View>
-  </View>
-);
+  );
+};
 
 const RingLarge: React.FC<{ data: AttendancePayload }> = ({ data }) => {
+  const theme = useTheme();
   const weeklyPct = (data.weeklyActualMinutes / Math.max(data.weeklyTargetMinutes, 1)) * 100;
   return (
     <View style={{ flex: 1 }}>
@@ -65,22 +69,27 @@ const RingLarge: React.FC<{ data: AttendancePayload }> = ({ data }) => {
   );
 };
 
-const Header: React.FC = () => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-    <View style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: theme.colors.greenSoft, alignItems: 'center', justifyContent: 'center' }}>
-      <Icon name="clock" size={12} color={theme.colors.green} />
+const Header: React.FC = () => {
+  const theme = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: theme.colors.greenSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="clock" size={12} color={theme.colors.green} />
+      </View>
+      <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, textTransform: 'uppercase' }}>
+        Attendance
+      </Text>
     </View>
-    <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, textTransform: 'uppercase' }}>
-      Attendance
-    </Text>
-  </View>
-);
+  );
+};
 
-const Dot: React.FC<{ on: boolean }> = ({ on }) => (
-  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: on ? theme.colors.green : theme.colors.muted }} />
-);
+const Dot: React.FC<{ on: boolean }> = ({ on }) => {
+  const theme = useTheme();
+  return <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: on ? theme.colors.green : theme.colors.muted }} />;
+};
 
 const Ring: React.FC<{ size: number; percent: number; children: React.ReactNode }> = ({ size, percent, children }) => {
+  const theme = useTheme();
   const stroke = 6;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;

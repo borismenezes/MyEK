@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { Icon, theme, widgetTheme } from '@myek/ui';
+import { Icon, useTheme, widgetTheme } from '@myek/ui';
 import type { TimesheetPayload, WidgetProps } from '../types';
 
 /**
@@ -8,6 +8,7 @@ import type { TimesheetPayload, WidgetProps } from '../types';
  * host's HoursProgressWidget styled with @myek/ui. Data via props.
  */
 export const TimesheetWidget: React.FC<WidgetProps<TimesheetPayload>> = ({ config, data }) => {
+  const theme = useTheme();
   if (!data) return null;
   const short = Math.max(0, data.weekTarget - data.weekHours);
   const label = (config as { applicationName?: string })?.applicationName ?? 'TIMESHEET';

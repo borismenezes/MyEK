@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { Icon, theme, widgetTheme } from '@myek/ui';
+import { Icon, useTheme, widgetTheme } from '@myek/ui';
 import type { LeaveBalancePayload, WidgetProps } from '../types';
 
 /**
@@ -9,8 +9,8 @@ import type { LeaveBalancePayload, WidgetProps } from '../types';
  * so it's visually identical to the in-host fallback. Receives its data via
  * props from the host's WidgetRenderer (data-via-props widget contract).
  *
- * Uses the static @myek/ui `theme` (light) for now; slice 2 swaps this for the
- * shared useTheme() singleton so it tracks light/dark with the host.
+ * Colours come from `useTheme()` (the host's published theme), so the tile
+ * tracks light/dark with the shell.
  */
 export const LeaveBalanceWidget: React.FC<WidgetProps<LeaveBalancePayload>> = ({ config, data }) => {
   if (!data) return null;
@@ -21,6 +21,7 @@ export const LeaveBalanceWidget: React.FC<WidgetProps<LeaveBalancePayload>> = ({
 };
 
 const BalanceMeterSmall: React.FC<{ data: LeaveBalancePayload; label: string }> = ({ data, label }) => {
+  const theme = useTheme();
   const remaining = data.total - data.used;
   const pct = (data.used / Math.max(data.total, 1)) * 100;
   return (
@@ -44,6 +45,7 @@ const BalanceMeterSmall: React.FC<{ data: LeaveBalancePayload; label: string }> 
 };
 
 const BalanceMeterLarge: React.FC<{ data: LeaveBalancePayload; label: string }> = ({ data, label }) => {
+  const theme = useTheme();
   const remaining = data.total - data.used;
   return (
     <View style={{ flex: 1 }}>
@@ -65,26 +67,30 @@ const BalanceMeterLarge: React.FC<{ data: LeaveBalancePayload; label: string }> 
   );
 };
 
-const Header: React.FC<{ label: string }> = ({ label }) => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-    <View
-      style={{
-        width: 22,
-        height: 22,
-        borderRadius: 7,
-        backgroundColor: 'rgba(198,12,48,0.10)',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-      <Icon name="calendar" size={12} color={theme.colors.ekRed} />
+const Header: React.FC<{ label: string }> = ({ label }) => {
+  const theme = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 7,
+          backgroundColor: 'rgba(198,12,48,0.10)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        <Icon name="calendar" size={12} color={theme.colors.ekRed} />
+      </View>
+      <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, letterSpacing: 0.2, textTransform: 'uppercase' }}>
+        {label}
+      </Text>
     </View>
-    <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, letterSpacing: 0.2, textTransform: 'uppercase' }}>
-      {label}
-    </Text>
-  </View>
-);
+  );
+};
 
 const Bar: React.FC<{ label: string; value: number; total: number; color: string }> = ({ label, value, total, color }) => {
+  const theme = useTheme();
   const pct = (value / Math.max(total, 1)) * 100;
   return (
     <View>
