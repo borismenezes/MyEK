@@ -149,8 +149,8 @@ export const DEFAULT_LAYOUT_ORDER: string[] = [
   'leave',
   'attendance',
   'payslip',
-  'timesheet',
   'applications',
+  'timesheet',
 ];
 
 export const defaultWidgetLayout: WidgetConfig[] = DEFAULT_LAYOUT_ORDER.map(createWidgetConfig).filter(
