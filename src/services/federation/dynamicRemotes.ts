@@ -21,8 +21,9 @@ import type { ServiceDefinition, ServiceMfCoords } from './types';
  * `dynamicRemotes.ts`. No custom ScriptManager resolver — Re.Pack's built-in
  * ResolverPlugin rebases chunk URLs from the manifest.
  *
- * P1 NOTE: these functions are not invoked from the app boot yet (see
- * config.mf.enabled). They exist + compile, ready for P2.
+ * Entry points: `loadExpose` (via FederatedWidget/FederatedRemote) self-registers
+ * the remote it needs; the catalog itself is fetched into useCatalogStore after
+ * sign-in (authService).
  */
 
 /** Reserved expose keys the shell knows how to mount. */

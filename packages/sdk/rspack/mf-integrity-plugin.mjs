@@ -12,8 +12,10 @@
 // starts and evicts the chunk cache when it changes — that's what makes an OTA
 // remote update actually reach the device on the next launch.
 //
-// Format: `sha256-<base64>` (the SRI convention). Verification/signing is a
-// later concern; emitting the data is harmless and enables update propagation.
+// Format: `sha256-<base64>` (the SRI convention). This map is a CHANGE SIGNAL,
+// not a security control — tamper-resistance comes from per-chunk JWT signing
+// (CodeSigningPlugin in remote-config.mjs, verified on device by the
+// resolver-with-signing runtime plugin).
 
 import { createHash } from 'node:crypto';
 import rspack from '@rspack/core';

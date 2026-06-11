@@ -1,6 +1,6 @@
 import React from 'react';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { theme } from './index';
+import { useTheme } from './index';
 
 /**
  * Shared vector icons (subset of the host's Icon), so federated remotes render
@@ -18,6 +18,7 @@ interface IconProps {
 }
 
 export const Icon: React.FC<IconProps> = ({ name, size = 18, color, stroke = 1.8 }) => {
+  const theme = useTheme();
   const c = color ?? theme.colors.ink;
   const p = {
     stroke: c,

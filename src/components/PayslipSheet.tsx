@@ -254,7 +254,7 @@ const PayslipDocument: React.FC<{
 
 const BrandHeader: React.FC = () => (
   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
-    <Logo width={110} />
+    <Logo width={85} />
     <Text style={{ color: '#0a78c2', fontSize: 24, fontWeight: '700', letterSpacing: -0.5 }}>
       dnata
     </Text>

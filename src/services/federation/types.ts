@@ -33,7 +33,8 @@ export interface ServiceDefinition {
   name: string;
   icon: string;
   version: string;
-  minShellVersion: string;
+  /** Optional on the wire — a service without it is loadable by any shell. */
+  minShellVersion?: string;
   status: EntityStatus;
   surfaces: Surface[];
   description?: string;

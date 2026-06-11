@@ -136,10 +136,10 @@ export const config = {
     remoteEnabled: pick(LOG_REMOTE_ENABLED, 'false') === 'true',
   },
   // ── Module Federation (micro-frontend host) ───────────────────────────────
-  // P1: present but DORMANT. The runtime modules under src/services/federation
-  // exist and compile, but nothing fetches the catalog or registers remotes
-  // until P2 (when the backend serves the app-scoped `myek` catalog and the
-  // first remote is built). The app runs as a monolith while `enabled` is false.
+  // LIVE (P2): authService kicks off the catalog fetch (useCatalogStore.load)
+  // after sign-in; widgets with `mf` coords in the catalog render federated via
+  // FederatedWidget, falling back to the in-host component on any failure. With
+  // `enabled` false (or an empty/failed catalog) the app runs as a monolith.
   mf: {
     // Which application's remotes this host loads (app-scoped OTA + catalog).
     app: 'myek',
@@ -152,9 +152,9 @@ export const config = {
     otaBaseUrl: apiBaseUrl,
     // Hostname allowlist for remote manifest URLs (release builds). Empty → skip.
     allowedRemoteHosts: [] as string[],
-    // Master switch for the federated-remote path. ON in P2: the `leave` widget
-    // loads from OTA, gracefully falling back to the in-host BalanceMeterWidget
-    // until the remote bundle is live (and on any load failure).
+    // Master switch for the federated-remote path. ON: catalog-listed widgets
+    // load from OTA remotes, each gracefully falling back to its in-host
+    // counterpart until the remote bundle is live (and on any load failure).
     enabled: true,
   },
 } as const;

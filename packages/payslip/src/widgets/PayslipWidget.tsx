@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { Icon, theme, widgetTheme } from '@myek/ui';
+import { Icon, useTheme, widgetTheme, type Theme } from '@myek/ui';
 import type { PayslipPayload, PayslipStatus, WidgetProps } from '../types';
 
 /**
@@ -13,14 +13,17 @@ export const PayslipWidget: React.FC<WidgetProps<PayslipPayload>> = ({ config, d
   return size === 'large' ? <PayslipLarge data={data} /> : <PayslipSmall data={data} />;
 };
 
-const STATUS_META: Record<PayslipStatus, { label: string; dot: string; fg: string; bg: string }> = {
+const statusMeta = (
+  theme: Theme,
+): Record<PayslipStatus, { label: string; dot: string; fg: string; bg: string }> => ({
   available: { label: 'Available', dot: theme.colors.green, fg: theme.colors.green, bg: theme.colors.greenSoft },
   pending: { label: 'Processing', dot: theme.colors.amber, fg: theme.colors.amber, bg: theme.colors.amberSoft },
   unavailable: { label: 'Not yet released', dot: theme.colors.muted, fg: theme.colors.muted, bg: theme.colors.bg },
-};
+});
 
 const PayslipSmall: React.FC<{ data: PayslipPayload }> = ({ data }) => {
-  const m = STATUS_META[data.status ?? 'available'];
+  const theme = useTheme();
+  const m = statusMeta(theme)[data.status ?? 'available'];
   return (
     <View style={{ flex: 1 }}>
       <Header />
@@ -43,7 +46,8 @@ const PayslipSmall: React.FC<{ data: PayslipPayload }> = ({ data }) => {
 };
 
 const PayslipLarge: React.FC<{ data: PayslipPayload }> = ({ data }) => {
-  const m = STATUS_META[data.status ?? 'available'];
+  const theme = useTheme();
+  const m = statusMeta(theme)[data.status ?? 'available'];
   return (
     <View style={{ flex: 1 }}>
       <Header />
@@ -64,16 +68,19 @@ const PayslipLarge: React.FC<{ data: PayslipPayload }> = ({ data }) => {
   );
 };
 
-const Header: React.FC = () => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-    <View style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: theme.colors.greenSoft, alignItems: 'center', justifyContent: 'center' }}>
-      <Icon name="wallet" size={12} color={theme.colors.green} />
+const Header: React.FC = () => {
+  const theme = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: theme.colors.greenSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="wallet" size={12} color={theme.colors.green} />
+      </View>
+      <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Payslip
+      </Text>
     </View>
-    <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-      Payslip
-    </Text>
-  </View>
-);
+  );
+};
 
 function timeAgo(ts: number): string {
   const days = Math.floor((Date.now() - ts) / 86400000);

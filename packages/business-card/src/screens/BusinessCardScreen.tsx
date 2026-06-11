@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Icon, theme } from '@myek/ui';
+import { Icon, useTheme } from '@myek/ui';
 import { buildVCard, getPlatformUser } from '@myek/platform';
 
 /**
@@ -16,6 +16,7 @@ import { buildVCard, getPlatformUser } from '@myek/platform';
  * contact rows (full-width, centered) rather than inline.
  */
 export default function BusinessCardScreen(): React.ReactElement {
+  const theme = useTheme();
   const user = getPlatformUser();
   const fullName =
     user && (user.firstName || user.lastName)
@@ -74,6 +75,7 @@ export default function BusinessCardScreen(): React.ReactElement {
 }
 
 const Avatar: React.FC<{ size: number; name: string; photoUri?: string }> = ({ size, name, photoUri }) => {
+  const theme = useTheme();
   const radius = size / 2;
   const ring = {
     shadowColor: theme.colors.ekRed,

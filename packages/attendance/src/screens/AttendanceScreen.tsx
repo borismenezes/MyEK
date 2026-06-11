@@ -1,9 +1,10 @@
 import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { theme } from '@myek/ui';
+import { useTheme } from '@myek/ui';
 
 /** Attendance detail screen — the `attendance` remote's federated `./screens`. */
 export default function AttendanceScreen(): React.ReactElement {
+  const theme = useTheme();
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: theme.colors.bg }]}>
       <ScrollView contentContainerStyle={styles.content}>
