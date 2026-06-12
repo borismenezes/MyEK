@@ -52,7 +52,7 @@ export default function PayslipDocumentScreen(): React.ReactElement {
       <BrandHeader />
       <View style={{ alignItems: 'center', gap: 6 }}>
         <Text style={styles.confidential}>CONFIDENTIAL</Text>
-        <Text style={styles.period}>{data.periodLabel}</Text>
+        <Text style={styles.period}>{previousMonthPeriodLabel()}</Text>
       </View>
 
       <View style={styles.employeeBox}>
@@ -196,6 +196,17 @@ const BankRow: React.FC<{ branchName: string; accountNumber: string; netPay: num
 
 function sumLineItems(items: PayslipLineItem[]): number {
   return items.reduce((sum, i) => sum + i.amount, 0);
+}
+
+/**
+ * "PAY ADVICE FOR MAY 2026" — the payslip is always for the PREVIOUS calendar
+ * month, so label off the date rather than the (fixed, demo) `data.periodLabel`.
+ * Mirrors the host's payslipService (which does the same for the home widget);
+ * the host util can't be imported across the bundle boundary, hence the local copy.
+ */
+function previousMonthPeriodLabel(now: Date = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return `PAY ADVICE FOR ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()}`;
 }
 
 function formatAmount(amount: number): string {
