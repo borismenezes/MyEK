@@ -46,8 +46,9 @@ const noop = () => {};
  *  - Renders ALL widgets (added + available) using the real WidgetRenderer
  *    so the user sees a true-to-life preview at the same size and layout
  *    as the home grid (via the shared DraggableGrid).
- *  - Each tile wobbles continuously and shows a top-left corner badge:
- *    red "−" for added (tap to remove) or green "+" for available (tap to add).
+ *  - Each tile wobbles continuously and shows a neutral badge centred on its
+ *    top-RIGHT corner: "−" for added (tap to remove), "+" for available (tap
+ *    to add).
  *  - Tap the backdrop or the Done pill to dismiss.
  */
 export const WidgetEditDrawer: React.FC<WidgetEditDrawerProps> = ({
@@ -272,10 +273,13 @@ const PreviewTile: React.FC<PreviewTileProps> = ({ action, onPress, children }) 
 );
 
 const styles = StyleSheet.create({
+  // 36×36 hit area centred on the tile's top-RIGHT corner (-18 = half its
+  // size), so the 26px badge inside it sits with its centre exactly on the
+  // widget corner.
   badgeHit: {
     position: 'absolute',
-    top: -10,
-    left: -10,
+    top: -18,
+    right: -18,
     width: 36,
     height: 36,
     alignItems: 'center',
@@ -299,17 +303,15 @@ const JigglingTile: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 const CornerBadge: React.FC<{ action: 'add' | 'remove' }> = ({ action }) => {
   const theme = useTheme();
-  const bg = action === 'remove' ? theme.colors.ekRed : theme.colors.green;
   return (
     <View
       style={{
-        position: 'absolute',
-        top: -6,
-        left: -6,
         width: 26,
         height: 26,
         borderRadius: 13,
-        backgroundColor: bg,
+        // Neutral for both actions (iOS-editor style) — the glyph alone says
+        // add vs remove; red/green made the grid read like an alert wall.
+        backgroundColor: theme.colors.mutedStrong,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
@@ -320,9 +322,9 @@ const CornerBadge: React.FC<{ action: 'add' | 'remove' }> = ({ action }) => {
         zIndex: 10,
       }}>
       {action === 'remove' ? (
-        <Text style={{ color: 'white', fontWeight: widgetTheme.fontWeight.bold, fontSize: widgetTheme.fontSize.titleXl, lineHeight: 18, marginTop: -2 }}>−</Text>
+        <Text style={{ color: theme.colors.surface, fontWeight: widgetTheme.fontWeight.bold, fontSize: widgetTheme.fontSize.titleXl, lineHeight: 18, marginTop: -2 }}>−</Text>
       ) : (
-        <Icon name="plus" size={14} color="white" stroke={2.5} />
+        <Icon name="plus" size={14} color={theme.colors.surface} stroke={2.5} />
       )}
     </View>
   );
