@@ -46,7 +46,7 @@ export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) 
   const progress = useSharedValue(0);
   const [mounted, setMounted] = useState(visible);
   const [fetched, setFetched] = useState<PayslipDocumentPayload | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const docRef = useRef<View>(null);
 
   useEffect(() => {

@@ -16,7 +16,14 @@
     "android:prod": "react-native run-android --mode release",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "verify:types": "npm run typecheck",
+    "verify:lint": "eslint src packages apps scripts App.tsx index.js",
+    "verify:contracts": "jest -c jest.contracts.config.js",
+    "verify:api-surface": "node scripts/api-surface.mjs --check",
+    "api-surface:write": "node scripts/api-surface.mjs --write",
+    "verify": "npm run verify:types && npm run verify:lint && npm run verify:api-surface && npm run verify:contracts"
   },
   "dependencies": {
     "@myek/api-client": "*",
@@ -31,6 +38,7 @@
     "@react-navigation/bottom-tabs": "^7.15.11",
     "@react-navigation/native": "^7.2.2",
     "@react-navigation/native-stack": "^7.14.12",
+    "@tanstack/react-query": "^5.101.0",
     "axios": "^1.16.0",
     "react": "19.2.3",
     "react-native": "0.85.2",

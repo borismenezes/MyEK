@@ -10,7 +10,9 @@
     "./widgets": "./src/widgets/index.ts"
   },
   "dependencies": {
+    "@myek/api-client": "*",
     "@myek/sdk": "*",
-    "@myek/ui": "*"
+    "@myek/ui": "*",
+    "@tanstack/react-query": "^5.101.0"
   }
 }

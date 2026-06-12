@@ -163,6 +163,16 @@ const manifestCachePlugin: ModuleFederationRuntimePlugin = {
       // URL: errorLoadRemote only receives the remote id, never the manifest URL,
       // so a URL key is a guaranteed miss (the offline path was dead).
       const remoteName = (json as { name?: string }).name ?? manifestUrl;
+      // Share-scope drift check: both sides stamp an opaque compat hash at
+      // build time (shared-versions.mjs). A mismatch means this remote was
+      // built against different shared/protocol versions than this host —
+      // observability only (MF singleton resolution still governs loading),
+      // but it's the signal the release-train policy acts on.
+      const remoteCompat = (json as { compat?: string }).compat;
+      const hostCompat = process.env.MYEK_MF_COMPAT;
+      if (remoteCompat && hostCompat && remoteCompat !== hostCompat) {
+        log.warn('mf.shared.mismatch', { remoteName });
+      }
       const prev = loadManifest(remoteName);
       if (
         !chunkCacheClearedThisSession &&

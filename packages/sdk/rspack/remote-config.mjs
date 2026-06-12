@@ -12,7 +12,7 @@ import rspack from '@rspack/core';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import { MfIntegrityPlugin } from './mf-integrity-plugin.mjs';
 import { loadBuildEnv } from './load-env.mjs';
-import { resolveSharedVersions, resolveWorkspaceVersions } from './shared-versions.mjs';
+import { computeCompatToken, resolveSharedVersions, resolveWorkspaceVersions } from './shared-versions.mjs';
 
 // Host-provided singletons (import:false) — the host bundles these eagerly and
 // registers the shared scope before any remote loads, so a remote never needs
@@ -135,7 +135,9 @@ export function buildRemoteRspackConfig({ appsDir, serviceId, mfName, uniqueName
         // Per-chunk SHA-256 into mf-manifest.json so the host can detect a
         // rebuilt remote and evict its (URL-keyed) chunk cache → OTA updates
         // actually reach devices. Must run after the MF plugin emits the manifest.
-        new MfIntegrityPlugin(),
+        // compatToken: opaque share-scope hash the host diffs against its own
+        // (mf.shared.mismatch telemetry) — see shared-versions.mjs.
+        new MfIntegrityPlugin({ compatToken: computeCompatToken(ROOT) }),
         // Sign every remote chunk: Re.Pack appends a JWT (over the chunk hash)
         // using the OTA private key. The host verifies it against the embedded
         // public key at load time. Production builds only (`rspack build`); the

@@ -1,0 +1,16 @@
+# Thin wrapper by design: ALL verification logic lives in npm scripts
+# (package.json `verify:*`), so the same checks run identically on a laptop
+# and on any CI runner — swapping CI vendors is a one-file change.
+image: node:22
+
+stages: [verify]
+
+verify:
+  stage: verify
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm/]
+  script:
+    - npm ci --cache .npm --prefer-offline --no-audit --no-fund
+    - npm run verify

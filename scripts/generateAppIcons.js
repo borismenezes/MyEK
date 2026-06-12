@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-env node */
 /**
  * One-shot generator: rasterises the MyEkLogo SVG into the iOS and
  * Android app-icon asset slots. Two colour variants are produced —

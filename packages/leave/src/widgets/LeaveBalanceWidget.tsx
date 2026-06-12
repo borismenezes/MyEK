@@ -1,21 +1,33 @@
 import React from 'react';
 import { Text, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import { Icon, useTheme, widgetTheme } from '@myek/ui';
+import { fetchLeaveWidget, LEAVE_QUERY_KEYS } from '../api';
 import type { LeaveBalancePayload, WidgetProps } from '../types';
 
 /**
- * Leave balance tile — the `leave` remote's federated home widget. A faithful
- * port of the host's BalanceMeterWidget, styled with the shared @myek/ui tokens
- * so it's visually identical to the in-host fallback. Receives its data via
- * props from the host's WidgetRenderer (data-via-props widget contract).
+ * Leave balance tile — the `leave` remote's federated home widget, and the
+ * REFERENCE implementation of the self-fetching widget contract: the remote
+ * owns its data (api.ts via @myek/api-client + the host's shared QueryClient),
+ * the host only mounts it. `props.data` is kept as a cross-version fallback —
+ * a shell older than 4.3.0 hasn't wired the api-client slots, so the query
+ * errors there and the host-fetched payload still renders the tile.
  *
  * Colours come from `useTheme()` (the host's published theme), so the tile
  * tracks light/dark with the shell.
  */
-export const LeaveBalanceWidget: React.FC<WidgetProps<LeaveBalancePayload>> = ({ config, data }) => {
+export const LeaveBalanceWidget: React.FC<WidgetProps<LeaveBalancePayload>> = ({ config, data: hostData }) => {
+  const query = useQuery({
+    queryKey: LEAVE_QUERY_KEYS.widget,
+    queryFn: fetchLeaveWidget,
+    refetchInterval: config?.refreshIntervalMs ?? false,
+  });
+  // Own fetch wins; host-fed data is the explicit compatibility fallback.
+  const data = query.data ?? hostData;
+
   if (!data) return null;
-  const label = (config as { applicationName?: string })?.applicationName ?? 'Leave';
-  const size = (config?.layout as { size?: string } | undefined)?.size ?? config?.size;
+  const label = config?.applicationName ?? 'Leave';
+  const size = config?.layout?.size ?? config?.size;
   if (size === 'small') return <BalanceMeterSmall data={data} label={label} />;
   return <BalanceMeterLarge data={data} label={label} />;
 };
