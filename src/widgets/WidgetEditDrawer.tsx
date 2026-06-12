@@ -46,8 +46,9 @@ const noop = () => {};
  *  - Renders ALL widgets (added + available) using the real WidgetRenderer
  *    so the user sees a true-to-life preview at the same size and layout
  *    as the home grid (via the shared DraggableGrid).
- *  - Each tile wobbles continuously and shows a top-left corner badge:
- *    red "−" for added (tap to remove) or green "+" for available (tap to add).
+ *  - Each tile wobbles continuously and shows a neutral badge centred on its
+ *    top-RIGHT corner: "−" for added (tap to remove), "+" for available (tap
+ *    to add).
  *  - Tap the backdrop or the Done pill to dismiss.
  */
 export const WidgetEditDrawer: React.FC<WidgetEditDrawerProps> = ({
@@ -264,7 +265,11 @@ const PreviewTile: React.FC<PreviewTileProps> = ({ action, onPress, children }) 
       <View pointerEvents="none" style={{ flex: 1 }}>
         {children}
       </View>
-      <Pressable onPress={onPress} hitSlop={6} style={styles.badgeHit}>
+      {/* hitSlop extends DOWN/LEFT only — into the tile, which has no other
+          tap targets. Upward/rightward slop would overlap the previous row's
+          tile (row gap is 12, the box already reaches 13 past the corner)
+          and risk a surprise remove on a near-miss tap there. */}
+      <Pressable onPress={onPress} hitSlop={{ bottom: 8, left: 8, top: 0, right: 0 }} style={styles.badgeHit}>
         <CornerBadge action={action} />
       </Pressable>
     </View>
@@ -272,14 +277,18 @@ const PreviewTile: React.FC<PreviewTileProps> = ({ action, onPress, children }) 
 );
 
 const styles = StyleSheet.create({
+  // The 26px badge is pinned to this box's top-right, and the box is offset
+  // -13 (half the BADGE size) — so the badge centre sits exactly on the
+  // widget corner, while the 36×36 hit area extends inward/downward into the
+  // tile rather than 18px upward into the previous grid row (row gap is 12).
   badgeHit: {
     position: 'absolute',
-    top: -10,
-    left: -10,
+    top: -13,
+    right: -13,
     width: 36,
     height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
     zIndex: 11,
   },
 });
@@ -299,17 +308,15 @@ const JigglingTile: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 const CornerBadge: React.FC<{ action: 'add' | 'remove' }> = ({ action }) => {
   const theme = useTheme();
-  const bg = action === 'remove' ? theme.colors.ekRed : theme.colors.green;
   return (
     <View
       style={{
-        position: 'absolute',
-        top: -6,
-        left: -6,
         width: 26,
         height: 26,
         borderRadius: 13,
-        backgroundColor: bg,
+        // Neutral for both actions (iOS-editor style) — the glyph alone says
+        // add vs remove; red/green made the grid read like an alert wall.
+        backgroundColor: theme.colors.mutedStrong,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
@@ -320,9 +327,9 @@ const CornerBadge: React.FC<{ action: 'add' | 'remove' }> = ({ action }) => {
         zIndex: 10,
       }}>
       {action === 'remove' ? (
-        <Text style={{ color: 'white', fontWeight: widgetTheme.fontWeight.bold, fontSize: widgetTheme.fontSize.titleXl, lineHeight: 18, marginTop: -2 }}>−</Text>
+        <Text style={{ color: theme.colors.surface, fontWeight: widgetTheme.fontWeight.bold, fontSize: widgetTheme.fontSize.titleXl, lineHeight: 18, marginTop: -2 }}>−</Text>
       ) : (
-        <Icon name="plus" size={14} color="white" stroke={2.5} />
+        <Icon name="plus" size={14} color={theme.colors.surface} stroke={2.5} />
       )}
     </View>
   );
