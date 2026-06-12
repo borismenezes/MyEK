@@ -3,8 +3,9 @@
  * recorded fixture payload, exactly as the host mounts it. Breaks in CI when
  * a payload-shape or props-contract change would break the published tile.
  */
-import { renderWidget } from '@myek/sdk/testing';
+import { renderWidget, renderWidgetSelfFetchError } from '@myek/sdk/testing';
 import widgets from '../index';
+import PayslipDocumentScreen from '../../screens/PayslipDocumentScreen';
 import payslipFixture from '../../__fixtures__/payslip.json';
 
 const fixtures: Record<string, unknown> = {
@@ -25,5 +26,13 @@ describe('payslip remote widget contract', () => {
     for (const r of renderers) {
       expect(r.toJSON()).not.toBeNull();
     }
+  });
+
+  // The ./screens expose (printable document) must render even when its own
+  // fetch fails — the BFF-incomplete interim falls back to the bundled
+  // default document, never a blank sheet.
+  it('renders the payslip document when its own fetch fails', async () => {
+    const renderer = await renderWidgetSelfFetchError(PayslipDocumentScreen as never, {});
+    expect(renderer.toJSON()).not.toBeNull();
   });
 });

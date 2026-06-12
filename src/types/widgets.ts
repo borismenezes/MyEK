@@ -126,40 +126,6 @@ export interface TimesheetDayRecord {
   entries: TimesheetEntry[];
 }
 
-/** Single line item in the payments or deductions section. */
-export interface PayslipLineItem {
-  label: string;
-  amount: number;
-}
-
-/**
- * Full payslip document, rendered inside the bottom-sheet view.
- *
- * `employeeName` / `employeeNumber` are typically overridden at render-time
- * with values from `useAuthStore.user` so the document reflects the
- * signed-in employee rather than the bundled placeholder.
- */
-export interface PayslipDocumentPayload {
-  /** Top centered banner, e.g. "PAY ADVICE FOR OCTOBER 2025". */
-  periodLabel: string;
-  employeeNumber: string;
-  employeeName: string;
-  position: string;
-  organization: string;
-  /** Date of joining — kept as a pre-formatted display string. */
-  doj: string;
-  grade: string;
-  currency: string;
-  payments: PayslipLineItem[];
-  deductions: PayslipLineItem[];
-  bankBranchName: string;
-  accountNumber: string;
-  /** Pre-computed net pay amount (payments total - deductions total). */
-  netPayAmount: number;
-  /** Footer message — usually leave balance or HR note. */
-  message: string;
-}
-
 export interface TimesheetDetailsPayload {
   /** ISO date of the earliest day in the window. */
   rangeStartDate: string;
