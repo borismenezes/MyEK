@@ -16,6 +16,7 @@ import { Logo } from './Logo';
 import { payslipDetailsService } from '@services/payslipDetailsService';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme } from '@theme/index';
+import { previousMonthLabel } from '@utils/dates';
 import payslipDefault from '@services/defaults/payslipDetails.json';
 import type { PayslipDocumentPayload, PayslipLineItem } from '@/types';
 
@@ -115,6 +116,9 @@ export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) 
   const employeeNumber = user?.staffId || data.employeeNumber;
   const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : data.employeeName;
   const employeeName = fullName.length > 0 ? fullName.toUpperCase() : data.employeeName;
+  // Payslip is always for the previous calendar month — label off the date, not
+  // the (fixed, demo) `data.periodLabel`, so header + document stay current.
+  const periodLabel = `PAY ADVICE FOR ${previousMonthLabel().toUpperCase()}`;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
@@ -153,7 +157,7 @@ export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) 
               Payslip
             </Text>
             <Text style={{ fontSize: 12, color: theme.colors.muted, marginTop: 2 }}>
-              {data.periodLabel}
+              {periodLabel}
             </Text>
           </View>
           <Pressable
@@ -202,12 +206,14 @@ const PayslipDocument: React.FC<{
 }> = ({ data, employeeNumber, employeeName }) => {
   const paymentsTotal = sumLineItems(data.payments);
   const deductionsTotal = sumLineItems(data.deductions);
+  // Always the previous calendar month (see PayslipSheet) — not data.periodLabel.
+  const periodLabel = `PAY ADVICE FOR ${previousMonthLabel().toUpperCase()}`;
   return (
     <View style={{ gap: 12 }}>
       <BrandHeader />
       <View style={{ alignItems: 'center', gap: 6 }}>
         <Text style={styles.confidential}>CONFIDENTIAL</Text>
-        <Text style={styles.period}>{data.periodLabel}</Text>
+        <Text style={styles.period}>{periodLabel}</Text>
       </View>
 
       <View style={styles.employeeBox}>
