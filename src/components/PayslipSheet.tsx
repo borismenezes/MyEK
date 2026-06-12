@@ -11,8 +11,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { captureRef } from 'react-native-view-shot';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SvgXml } from 'react-native-svg';
 import { Icon } from './Icon';
-import { Logo } from './Logo';
+import { EMIRATES_LOGO_SVG } from '../assets/emiratesLogoSource';
+import { DNATA_LOGO_SVG } from '../assets/dnataLogoSource';
 import { payslipDetailsService } from '@services/payslipDetailsService';
 import { useAuthStore } from '@store/useAuthStore';
 import { useTheme } from '@theme/index';
@@ -252,12 +254,18 @@ const PayslipDocument: React.FC<{
   );
 };
 
+// Letterhead marks: official brand SVGs (hardcoded brand colours — these are
+// deliberately NOT theme-tinted; the document is a fixed white printable).
+// Heights derive from each source's viewBox so the marks scale undistorted.
+const EMIRATES_LOGO_WIDTH = 56; // viewBox 128×150 → ≈66 tall
+const EMIRATES_LOGO_HEIGHT = Math.round(EMIRATES_LOGO_WIDTH * (150 / 128));
+const DNATA_LOGO_WIDTH = 72; // viewBox 135×102 → ≈54 tall
+const DNATA_LOGO_HEIGHT = Math.round(DNATA_LOGO_WIDTH * (102 / 135));
+
 const BrandHeader: React.FC = () => (
   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
-    <Logo width={85} />
-    <Text style={{ color: '#0a78c2', fontSize: 24, fontWeight: '700', letterSpacing: -0.5 }}>
-      dnata
-    </Text>
+    <SvgXml xml={EMIRATES_LOGO_SVG} width={EMIRATES_LOGO_WIDTH} height={EMIRATES_LOGO_HEIGHT} />
+    <SvgXml xml={DNATA_LOGO_SVG} width={DNATA_LOGO_WIDTH} height={DNATA_LOGO_HEIGHT} />
   </View>
 );
 
