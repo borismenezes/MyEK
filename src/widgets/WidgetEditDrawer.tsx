@@ -265,7 +265,11 @@ const PreviewTile: React.FC<PreviewTileProps> = ({ action, onPress, children }) 
       <View pointerEvents="none" style={{ flex: 1 }}>
         {children}
       </View>
-      <Pressable onPress={onPress} hitSlop={6} style={styles.badgeHit}>
+      {/* hitSlop extends DOWN/LEFT only — into the tile, which has no other
+          tap targets. Upward/rightward slop would overlap the previous row's
+          tile (row gap is 12, the box already reaches 13 past the corner)
+          and risk a surprise remove on a near-miss tap there. */}
+      <Pressable onPress={onPress} hitSlop={{ bottom: 8, left: 8, top: 0, right: 0 }} style={styles.badgeHit}>
         <CornerBadge action={action} />
       </Pressable>
     </View>
@@ -273,17 +277,18 @@ const PreviewTile: React.FC<PreviewTileProps> = ({ action, onPress, children }) 
 );
 
 const styles = StyleSheet.create({
-  // 36×36 hit area centred on the tile's top-RIGHT corner (-18 = half its
-  // size), so the 26px badge inside it sits with its centre exactly on the
-  // widget corner.
+  // The 26px badge is pinned to this box's top-right, and the box is offset
+  // -13 (half the BADGE size) — so the badge centre sits exactly on the
+  // widget corner, while the 36×36 hit area extends inward/downward into the
+  // tile rather than 18px upward into the previous grid row (row gap is 12).
   badgeHit: {
     position: 'absolute',
-    top: -18,
-    right: -18,
+    top: -13,
+    right: -13,
     width: 36,
     height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
     zIndex: 11,
   },
 });
