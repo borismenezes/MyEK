@@ -129,7 +129,7 @@ export function fetch${pascal}Widget(): Promise<${pascal}Payload> {
   [`packages/${serviceId}/src/widgets/${pascal}Widget.tsx`]: `import React from 'react';
 import { Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useTheme, widgetTheme } from '@myek/ui';
+import { useTheme, widgetTheme, WidgetErrorState } from '@myek/ui';
 import { fetch${pascal}Widget, ${camel.toUpperCase()}_QUERY_KEYS } from '../api';
 import type { ${pascal}Payload, WidgetProps } from '../types';
 
@@ -146,7 +146,12 @@ export const ${pascal}Widget: React.FC<WidgetProps<${pascal}Payload>> = ({ confi
     refetchInterval: config?.refreshIntervalMs ?? false,
   });
   const data = query.data ?? hostData;
-  if (!data) return null;
+  if (!data) {
+    // Self-fetch failed with no host-fed fallback: surface it — a blank tile
+    // on outage is silent degradation (no-silent-fallback rule).
+    if (query.isError) return <WidgetErrorState onRetry={() => void query.refetch()} />;
+    return null; // initial query tick — data or error arrives next render
+  }
 
   return (
     <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -213,7 +218,7 @@ export default function ${pascal}Screen(): React.ReactElement {
  * recorded fixture payload, exactly as the host mounts it. Breaks in CI when
  * a payload-shape or props-contract change would break the published tile.
  */
-import { renderWidget } from '@myek/sdk/testing';
+import { renderWidget, renderWidgetSelfFetchError } from '@myek/sdk/testing';
 import widgets from '../index';
 import ${camel}Fixture from '../../__fixtures__/${camel}.json';
 
@@ -235,6 +240,16 @@ describe('${serviceId} remote widget contract', () => {
     for (const r of renderers) {
       expect(r.toJSON()).not.toBeNull();
     }
+  });
+
+  // Self-fetching contract: with no payload anywhere (own query fails, no
+  // host-fed fallback), the tile must surface an error state — a null render
+  // here is the silent blank-tile-on-outage failure mode.
+  it.each(Object.keys(widgets))('renders an error state for "%s" when its own fetch fails', async widgetId => {
+    const renderer = await renderWidgetSelfFetchError(widgets[widgetId], {
+      config: { widgetId, applicationName: '${serviceId}' },
+    });
+    expect(renderer.toJSON()).not.toBeNull();
   });
 });
 `,

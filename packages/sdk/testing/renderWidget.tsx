@@ -55,3 +55,45 @@ export function renderWidget<T>(
     return renderer;
   });
 }
+
+/**
+ * Render a SELF-FETCHING widget with NO payload at all (data: null, no host
+ * fallback) and let its query settle into the error state — under jest the
+ * api-client base URL is unset, so the widget's own fetch rejects, exactly
+ * like an outage on device. The no-silent-fallback contract: the widget must
+ * render *something* (an error/retry state), never a blank tile. Assert
+ * `(await renderWidgetSelfFetchError(W)).toJSON()` is non-null.
+ */
+export async function renderWidgetSelfFetchError<T>(
+  Widget: WidgetComponent<T>,
+  opts: Pick<RenderWidgetOptions, 'config'> = {},
+): Promise<ReactTestRenderer> {
+  // Unlike renderWidget's client this one MUST fetch on mount — the whole
+  // point is letting the widget's own query run and fail.
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  const props: WidgetProps<T> = {
+    config: { ...(opts.config ?? {}), layout: { size: 'large' } },
+    data: null,
+    loading: false,
+    error: null,
+    isStale: false,
+    onRefresh: () => {},
+  };
+  let renderer!: ReactTestRenderer;
+  await act(async () => {
+    renderer = TestRenderer.create(
+      <QueryClientProvider client={client}>
+        <Widget {...props} />
+      </QueryClientProvider>,
+    );
+  });
+  // Second act pass: the rejected queryFn settles through TanStack's
+  // retryer/notify chain only after the mount act has flushed — one short
+  // sleep here reliably lands the hook in isError before the caller asserts.
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 50));
+  });
+  return renderer;
+}

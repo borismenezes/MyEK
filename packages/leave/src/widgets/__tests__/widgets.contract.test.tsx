@@ -3,7 +3,7 @@
  * recorded fixture payload, exactly as the host mounts it. Breaks in CI when
  * a payload-shape or props-contract change would break the published tile.
  */
-import { renderWidget } from '@myek/sdk/testing';
+import { renderWidget, renderWidgetSelfFetchError } from '@myek/sdk/testing';
 import widgets from '../index';
 import leaveFixture from '../../__fixtures__/leave.json';
 
@@ -25,5 +25,15 @@ describe('leave remote widget contract', () => {
     for (const r of renderers) {
       expect(r.toJSON()).not.toBeNull();
     }
+  });
+
+  // Self-fetching contract: with no payload anywhere (own query fails, no
+  // host-fed fallback), the tile must surface an error state — a null render
+  // here is the silent blank-tile-on-outage failure mode.
+  it.each(Object.keys(widgets))('renders an error state for "%s" when its own fetch fails', async widgetId => {
+    const renderer = await renderWidgetSelfFetchError(widgets[widgetId], {
+      config: { widgetId, applicationName: 'leave' },
+    });
+    expect(renderer.toJSON()).not.toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { Icon, useTheme, widgetTheme } from '@myek/ui';
+import { Icon, useTheme, widgetTheme, WidgetErrorState } from '@myek/ui';
 import { fetchLeaveWidget, LEAVE_QUERY_KEYS } from '../api';
 import type { LeaveBalancePayload, WidgetProps } from '../types';
 
@@ -25,7 +25,13 @@ export const LeaveBalanceWidget: React.FC<WidgetProps<LeaveBalancePayload>> = ({
   // Own fetch wins; host-fed data is the explicit compatibility fallback.
   const data = query.data ?? hostData;
 
-  if (!data) return null;
+  if (!data) {
+    // Self-fetch failed with no host-fed fallback (the normal self-fetching
+    // case — the host skips its fetch). A blank tile here would be silent
+    // degradation: surface the failure with a retry instead.
+    if (query.isError) return <WidgetErrorState onRetry={() => void query.refetch()} />;
+    return null; // initial query tick — data or error arrives next render
+  }
   const label = config?.applicationName ?? 'Leave';
   const size = config?.layout?.size ?? config?.size;
   if (size === 'small') return <BalanceMeterSmall data={data} label={label} />;

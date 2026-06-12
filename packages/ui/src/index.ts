@@ -12,6 +12,7 @@ export { Icon } from './Icon';
 export type { IconName } from './Icon';
 export { buildVCard } from './vcard';
 export type { ContactCard } from './vcard';
+export { WidgetErrorState } from './WidgetErrorState';
 
 /**
  * Reactive read of the host-published user. Re-renders the consumer whenever the
