@@ -10,7 +10,6 @@ import { config } from '@config/index';
 import { createLogger } from '@utils/logger';
 import { DEFAULT_FLAGS } from '@utils/featureFlags';
 import manifestDefault from '../services/defaults/applicationsManifest.json';
-import userDefault from '../services/defaults/user.json';
 import { DEFAULT_LAYOUT_ORDER, resolveWidgetSize } from '../widgets/WidgetRegistry';
 import { resolveIconName } from '@components/Icon';
 import type {
@@ -41,6 +40,47 @@ const BASELINE_PERMISSIONS: Permission[] = [
 ];
 
 const log = createLogger('Auth/Intune');
+
+/**
+ * Mocked profile fields — placeholders for attributes Graph /me may not carry
+ * (or the EK HR API would own). Used as a FALLBACK only: real /me values win
+ * (mergeUser overlays /me on top), this just fills the gaps so the profile/card
+ * never look empty. Carries NO identity (no name/email/staffId) — those stay
+ * real (ID-token name, /me email + staffId). Replace with the HR API when wired.
+ */
+const MOCK_HR: Pick<
+  User,
+  'jobTitle' | 'department' | 'location' | 'phone' | 'grade' | 'joinedAt' | 'eligibilities'
+> = {
+  jobTitle: 'Technology Experience Specialist',
+  department: 'EMIRATES GROUP IT-EIT',
+  location: 'EK Tech Centre',
+  // Same mocked number the home widget shows (businessCard.json) — /me has none.
+  phone: '+971 50 123 4567',
+  grade: 'EK.08',
+  joinedAt: '2025-11-01T00:00:00Z',
+  eligibilities: [
+    { label: 'Eligible to access phone at DXB Airport', tone: 'gold' },
+    { label: 'Premium lounge access', tone: 'gold' },
+    { label: 'Annual leave travel benefits', tone: 'green' },
+  ],
+};
+
+/**
+ * Identity-free seed: empty real fields + the mocked HR fields. The base every
+ * login result starts from — real identity (ID-token name, /me email/staffId/…)
+ * overlays it. Replaces the old `defaults/user.json` demo persona.
+ */
+function makeSeedUser(): User {
+  return {
+    id: '',
+    employeeId: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    ...MOCK_HR, // jobTitle, department, location, grade, joinedAt, eligibilities
+  };
+}
 
 /**
  * Microsoft Entra ID / MSAL wrapper.
@@ -127,19 +167,29 @@ class MsalIntuneAdapter implements IntuneAdapter {
 
     const session = toSession(result);
 
+    // The signed-in account's own ID-token claims are the source of truth for
+    // the displayed identity (name / email). The BFF bootstrap may not echo
+    // them (e.g. no `name` claim reaches the backend), which would otherwise
+    // leave the greeting on the bundled demo name.
+    const identity = identityFromIdToken(session.idToken);
+
     // Boot from the MyEK BFF (`/v1/myek/bootstrap`): apps, widgets, permissions
     // assembled from the user's entitlements + JWT identity. The auth store
     // isn't populated yet, so the token is passed explicitly. With edge-
     // terminated auth there's no token exchange — the MSAL session is the real
     // thing. On any failure we synthesise a LoginResult from bundled defaults
     // so the app still hydrates offline.
+    let loginResult: LoginResult;
     try {
       const bootstrap = await fetchMyekBootstrap(session.accessToken);
-      return myekBootstrapToLoginResult(bootstrap, session);
+      loginResult = myekBootstrapToLoginResult(bootstrap, session);
     } catch (e) {
       log.warn('MyEK BFF /v1/myek/bootstrap unreachable — using bundled fallback LoginResult', e);
-      return makeBootstrapFromMsal(result, session);
+      loginResult = makeBootstrapFromMsal(result, session);
     }
+    // Real name/email from the logged-in account wins over the bundled default.
+    loginResult.user = mergeUser(loginResult.user, identity);
+    return loginResult;
   }
 
   async refresh(_refreshToken: string): Promise<AuthSession | null> {
@@ -291,7 +341,7 @@ export function myekBootstrapToLoginResult(
   session: AuthSession,
 ): LoginResult {
   return {
-    user: mergeUser(userDefault as User, raw.user),
+    user: mergeUser(makeSeedUser(), raw.user),
     session,
     permissions: (raw.permissions?.length ? raw.permissions : BASELINE_PERMISSIONS) as Permission[],
     apps: raw.apps ?? [],
@@ -302,8 +352,66 @@ export function myekBootstrapToLoginResult(
   };
 }
 
+/** Decode a JWT payload (display only — no signature verification). */
+function decodeJwtClaims(jwt: string | undefined): Record<string, unknown> {
+  if (!jwt) return {};
+  try {
+    const payload = jwt.split('.')[1];
+    if (!payload) return {};
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+    const bin = atob(b64 + pad);
+    const json = decodeURIComponent(
+      bin
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(''),
+    );
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Real identity (name / email / employeeId) decoded from the signed-in user's
+ * ID token, so the home greeting + business card reflect the logged-in user
+ * rather than the bundled demo persona. If the token carries no `name` claim,
+ * a display name is derived from the email local part ("manoj.lalwani" →
+ * "Manoj Lalwani") so it's still clearly the signed-in user.
+ */
+export function identityFromIdToken(idToken: string | undefined): Partial<User> {
+  const claims = decodeJwtClaims(idToken);
+  const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+  const identity: Partial<User> = {};
+
+  // ID token feeds the NAME only — email + the displayed staff ID come from
+  // Graph /me (the source of truth). `email` here is used solely to derive a
+  // display name when the `name` claim is absent; it is NOT stored on identity.
+  const email = str(claims.preferred_username) || str(claims.email) || str(claims.upn);
+
+  let fullName = str(claims.name);
+  if (!fullName && email) {
+    fullName = email
+      .split('@')[0]
+      .replace(/[._-]+/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+      .trim();
+  }
+  if (fullName) {
+    const sp = fullName.indexOf(' ');
+    identity.firstName = sp < 0 ? fullName : fullName.slice(0, sp);
+    identity.lastName = sp < 0 ? '' : fullName.slice(sp + 1).trim();
+  }
+  // Internal API id (oid/sub) — for service calls only, never the displayed
+  // staff number (that's `staffId`, from /me).
+  const apiId = str(claims.employee_id) || str(claims.oid) || str(claims.sub);
+  if (apiId) identity.employeeId = apiId;
+  return identity;
+}
+
 /** Overlay `over` onto `base`, keeping `base` wherever `over` is empty/missing. */
-function mergeUser(base: User, over: Partial<User> | undefined): User {
+export function mergeUser(base: User, over: Partial<User> | undefined): User {
   const out: User = { ...base };
   if (!over) return out;
   (Object.keys(over) as (keyof User)[]).forEach(key => {
@@ -323,14 +431,11 @@ function sortWidgetLayout(configs: WidgetConfig[]): WidgetConfig[] {
 }
 
 /**
- * Synthesise the bootstrap payload after a successful MSAL sign-in.
- *
- * Until the HR backend is wired up, the displayed profile (name, jobTitle,
- * department, employeeId, eligibilities, etc.) comes from the bundled
- * `defaults/user.json` so the home screen reads as a coherent demo persona.
- * The MSAL session (access/id tokens) is still the real thing — it just
- * isn't used to populate profile fields. Replace this with a real call to
- * `endpoints.auth.login` once the backend is in place.
+ * Synthesise the bootstrap payload after a successful MSAL sign-in when the BFF
+ * is unreachable. Identity stays REAL: the caller overlays the ID-token name and
+ * Graph /me (email, staffId, jobTitle, …) on top. This seed only carries the
+ * mocked EK-only fields (grade/joinedAt/eligibilities via `makeSeedUser`) — no
+ * demo persona.
  *
  * Note: `_result` is intentionally unused; kept on the signature so the
  * caller's contract is stable when this is swapped out.
@@ -395,10 +500,10 @@ class MockIntuneAdapter implements IntuneAdapter {
 }
 
 /**
- * Synthesises a LoginResult from bundled fallback data — no hardcoded
- * values live in this function. Sources, in order:
+ * Synthesises a LoginResult from bundled fallback data. Sources, in order:
  *
- *   - `user`         ← `services/defaults/user.json`.
+ *   - `user`         ← `makeSeedUser()` (empty real fields + mocked HR only;
+ *                       real identity is overlaid by the caller).
  *   - `permissions`  ← `BASELINE_PERMISSIONS` constant above.
  *   - `apps`, `widgetLayout`, `apiVersions`
  *                    ← derived from `services/defaults/applicationsManifest.json`,
@@ -419,7 +524,7 @@ function makeFallbackLoginResult(): LoginResult {
   const manifest = manifestDefault as AppManifestEntry[];
 
   return {
-    user: userDefault as User,
+    user: makeSeedUser(),
     session,
     permissions: BASELINE_PERMISSIONS,
     apps: appsFromManifest(manifest),

@@ -1,0 +1,31 @@
+{
+  "name": "@myek/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MyEK micro-frontend SDK \u2014 Module Federation build helpers: shared-singleton package list (versions resolved from installed node_modules at build time), remote rspack builder, env loader. Does NOT enumerate remotes; remote discovery is runtime/catalog-driven.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./rspack/remote-config": "./rspack/remote-config.mjs",
+    "./rspack/shared-versions": "./rspack/shared-versions.mjs",
+    "./rspack/load-env": "./rspack/load-env.mjs",
+    "./testing": "./testing/renderWidget.tsx"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "*",
+    "react": "*",
+    "react-test-renderer": "*"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-query": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-test-renderer": {
+      "optional": true
+    }
+  }
+}

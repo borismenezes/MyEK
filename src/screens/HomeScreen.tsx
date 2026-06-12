@@ -13,6 +13,7 @@ import {
   WidgetRenderer,
   createWidgetConfig,
   defaultWidgetLayout,
+  getRegistryEntry,
   findManifestEntryForWidget,
   findSmartInsertionIndex,
   layoutFromManifest,
@@ -164,7 +165,13 @@ export const HomeScreen: React.FC = () => {
   // above) and fall back to defaults if it's somehow still empty (e.g. before
   // the effect has run on the first frame).
   const layout = useMemo(
-    () => (storedLayout.length > 0 ? storedLayout : defaultWidgetLayout),
+    () =>
+      // Drop any widget no longer in the registry (retired widgets that may
+      // still linger in a user's saved layout or the BFF bootstrap) so they
+      // never render as an "unknown widget" placeholder tile.
+      (storedLayout.length > 0 ? storedLayout : defaultWidgetLayout).filter(
+        item => getRegistryEntry(item.widgetId) !== null,
+      ),
     [storedLayout],
   );
 

@@ -101,7 +101,7 @@ export interface AppManifestEntry {
  * renderer keyed by `layout` in `screens/detail/DetailLayoutRegistry`, and
  * referenced from the manifest entry — no per-app screen wiring required.
  */
-export type AppDetailLayout = 'list' | 'vouchers' | 'attendanceWeek' | 'timesheetLog';
+export type AppDetailLayout = 'list' | 'attendanceWeek' | 'timesheetLog';
 
 /** A single line item billed against a story / Jira / taxonomy. */
 export interface TimesheetEntry {
@@ -124,40 +124,6 @@ export interface TimesheetDayRecord {
   totalHours: number;
   /** Zero or more line items. Ordered by the server (typically chronological). */
   entries: TimesheetEntry[];
-}
-
-/** Single line item in the payments or deductions section. */
-export interface PayslipLineItem {
-  label: string;
-  amount: number;
-}
-
-/**
- * Full payslip document, rendered inside the bottom-sheet view.
- *
- * `employeeName` / `employeeNumber` are typically overridden at render-time
- * with values from `useAuthStore.user` so the document reflects the
- * signed-in employee rather than the bundled placeholder.
- */
-export interface PayslipDocumentPayload {
-  /** Top centered banner, e.g. "PAY ADVICE FOR OCTOBER 2025". */
-  periodLabel: string;
-  employeeNumber: string;
-  employeeName: string;
-  position: string;
-  organization: string;
-  /** Date of joining — kept as a pre-formatted display string. */
-  doj: string;
-  grade: string;
-  currency: string;
-  payments: PayslipLineItem[];
-  deductions: PayslipLineItem[];
-  bankBranchName: string;
-  accountNumber: string;
-  /** Pre-computed net pay amount (payments total - deductions total). */
-  netPayAmount: number;
-  /** Footer message — usually leave balance or HR note. */
-  message: string;
 }
 
 export interface TimesheetDetailsPayload {

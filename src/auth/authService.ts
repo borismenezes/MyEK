@@ -1,8 +1,12 @@
-import { intuneAdapter } from './intuneAuth';
+import { identityFromIdToken, intuneAdapter, mergeUser } from './intuneAuth';
 import { useAuthStore } from '@store/useAuthStore';
+import { useCatalogStore } from '@store/useCatalogStore';
 import { versionRegistry, setAccessTokenGetter, setUnauthorizedHandler } from '@api/index';
 import { setApimTokenAcquirer } from '@api/apimClient';
+import { setApiBaseUrl, setTokenGetter } from '@myek/api-client';
+import { config } from '@/config';
 import { profilePictureService } from '@services/profilePictureService';
+import { graphProfileService } from '@services/graphProfileService';
 import { userService } from '@services/userService';
 import { stores, json } from '@utils/storage';
 import { createLogger } from '@utils/logger';
@@ -53,6 +57,14 @@ export async function hydrateAuth(): Promise<boolean> {
   versionRegistry.set(bootstrap.apiVersions);
   useAuthStore.getState().bootstrapFromCache(session, bootstrap);
 
+  // Re-derive the displayed identity from the cached ID token so a stale cached
+  // user (or one whose name never resolved) shows the logged-in user — no
+  // re-sign-in required.
+  const cachedUser = useAuthStore.getState().user;
+  if (cachedUser) {
+    useAuthStore.getState().setUser(mergeUser(cachedUser, identityFromIdToken(session.idToken)));
+  }
+
   // Fetch the profile picture once per session — fire and forget, the
   // Avatar component falls back to its SVG silhouette while the call is
   // in flight or if it fails.
@@ -60,6 +72,10 @@ export async function hydrateAuth(): Promise<boolean> {
   // Same pattern for the user profile — refresh from the API in the
   // background so cached-session launches still get up-to-date fields.
   void refreshUserProfile();
+
+  // Load the per-app MF catalog so federated widgets (e.g. leave) resolve from
+  // the backend, not a hardcoded list. Best-effort: failure → in-host widgets.
+  void useCatalogStore.getState().load();
 
   // If the persisted token is expired, kick off a background refresh.
   // We deliberately don't await it — splash dismisses on cached state,
@@ -88,6 +104,12 @@ async function backgroundRefresh(refreshToken: string): Promise<void> {
     }
     persistSession(refreshed);
     useAuthStore.getState().updateSession(refreshed);
+    // Self-heal the catalog: the launch-time `load()` (hydrateAuth) fired with
+    // the still-expired token and likely 401'd → empty catalog → every widget
+    // rendered in-host. Now that we hold a fresh token, reload it. WidgetRenderer
+    // subscribes to `widgetToService`, so a populated catalog flips each tile to
+    // its federated remote — no manual re-login needed.
+    void useCatalogStore.getState().load();
   } catch (e) {
     log.warn('Background refresh threw', e);
   }
@@ -114,19 +136,33 @@ export function wireApiAuth(): void {
   // the burst of parallel widget fetches at launch → requests went out with no
   // Authorization header → Kong 401 → widgets fell back to mocks. Refresh only
   // when the cached token is actually expired.
-  setApimTokenAcquirer(async () => {
-    const session = useAuthStore.getState().session;
-    if (!session) return null;
-    if (Date.now() >= session.expiresAt) {
-      const refreshed = await intuneAdapter.refresh(session.refreshToken);
-      if (refreshed) {
-        persistSession(refreshed);
-        useAuthStore.getState().updateSession(refreshed);
-        return refreshed.accessToken;
-      }
+  setApimTokenAcquirer(acquireBffToken);
+  // Cross-bundle client (@myek/api-client, ADR-0022): federated remotes fetch
+  // their own data through globalThis-slot config the host publishes here —
+  // same single token + BFF base as the host's own clients.
+  setApiBaseUrl(config.apim.baseUrl);
+  setTokenGetter(acquireBffToken);
+}
+
+/**
+ * Single-token acquirer shared by the host's BFF client and the cross-bundle
+ * @myek/api-client: the cached session token, refreshed only when actually
+ * expired. Per-call silent MSAL acquisition is deliberately avoided — it
+ * returned null under the parallel widget-fetch burst at launch (see the
+ * wireApiAuth comment above).
+ */
+async function acquireBffToken(): Promise<string | null> {
+  const session = useAuthStore.getState().session;
+  if (!session) return null;
+  if (Date.now() >= session.expiresAt) {
+    const refreshed = await intuneAdapter.refresh(session.refreshToken);
+    if (refreshed) {
+      persistSession(refreshed);
+      useAuthStore.getState().updateSession(refreshed);
+      return refreshed.accessToken;
     }
-    return session.accessToken;
-  });
+  }
+  return session.accessToken;
 }
 
 export async function signIn(): Promise<LoginResult> {
@@ -143,6 +179,8 @@ export async function signIn(): Promise<LoginResult> {
   // initial render already has the bootstrap-bundled user data, this just
   // replaces it with fresh server-side fields (jobTitle, eligibilities, …).
   void refreshUserProfile();
+  // Load the per-app MF catalog so federated widgets resolve (best-effort).
+  void useCatalogStore.getState().load();
   return result;
 }
 
@@ -152,14 +190,27 @@ export async function signIn(): Promise<LoginResult> {
  * already-rendered cached profile and are logged, not surfaced.
  */
 async function refreshUserProfile(): Promise<void> {
-  const employeeId = useAuthStore.getState().user?.employeeId;
-  if (!employeeId) return;
+  if (!useAuthStore.getState().user) return;
   try {
-    const fresh = await userService.fetch(employeeId);
-    useAuthStore.getState().setUser(fresh);
-    log.debug('User profile refreshed from API');
+    // 1) Real profile fields from Microsoft Graph `/me` (jobTitle, department,
+    //    location, name, email) so the signed-in user sees their OWN data, not
+    //    the bundled demo persona. Returns a partial — real values win, and
+    //    fields Graph doesn't carry are left untouched. null on failure.
+    const graphProfile = await graphProfileService.fetch();
+    if (graphProfile) {
+      useAuthStore.getState().setUser(mergeUser(useAuthStore.getState().user!, graphProfile));
+    }
+    // 2) Emirates HR API for the EK-specific fields Graph can't supply (grade,
+    //    eligibilities, joinedAt). Returns null on failure — never the demo
+    //    persona — so it can't clobber the real identity from step 1.
+    const employeeId = useAuthStore.getState().user?.employeeId;
+    if (employeeId) {
+      const hr = await userService.fetch(employeeId);
+      if (hr) useAuthStore.getState().setUser(mergeUser(useAuthStore.getState().user!, hr));
+    }
+    log.debug('User profile refreshed (Graph /me + HR)');
   } catch (e) {
-    log.warn('Background user-profile refresh failed', e);
+    log.warn('Background user-profile refresh failed — real identity kept', e);
   }
 }
 
@@ -233,6 +284,9 @@ export async function signOut(): Promise<void> {
   // Clear in-memory state
   useAuthStore.getState().clear();
   versionRegistry.clear();
+  // Federation teardown: the next account must not inherit this account's
+  // catalog maps, cached catalog, or MF remote registrations.
+  useCatalogStore.getState().reset();
 
   // Clear persisted session + bootstrap (but keep prefs like theme + cache —
   // cache is wiped separately if compliance demands it)

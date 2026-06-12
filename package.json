@@ -2,6 +2,10 @@
   "name": "MyEK",
   "version": "0.0.1",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
@@ -12,16 +16,29 @@
     "android:prod": "react-native run-android --mode release",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "verify:types": "npm run typecheck",
+    "verify:lint": "eslint src packages apps scripts App.tsx index.js",
+    "verify:contracts": "jest -c jest.contracts.config.js",
+    "verify:api-surface": "node scripts/api-surface.mjs --check",
+    "api-surface:write": "node scripts/api-surface.mjs --write",
+    "verify": "npm run verify:types && npm run verify:lint && npm run verify:api-surface && npm run verify:contracts"
   },
   "dependencies": {
+    "@myek/api-client": "*",
+    "@myek/platform": "*",
+    "@myek/sdk": "*",
+    "@myek/ui": "*",
     "@react-native-async-storage/async-storage": "^3.0.2",
+    "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native-community/blur": "^4.4.1",
     "@react-native-community/netinfo": "^12.0.1",
     "@react-native/new-app-screen": "0.85.2",
     "@react-navigation/bottom-tabs": "^7.15.11",
     "@react-navigation/native": "^7.2.2",
     "@react-navigation/native-stack": "^7.14.12",
+    "@tanstack/react-query": "^5.101.0",
     "axios": "^1.16.0",
     "react": "19.2.3",
     "react-native": "0.85.2",
@@ -46,6 +63,9 @@
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
+    "@callstack/repack": "5.2.5",
+    "@callstack/repack-plugin-reanimated": "^5.2.5",
+    "@module-federation/enhanced": "2.3.1",
     "@react-native-community/cli": "20.1.0",
     "@react-native-community/cli-platform-android": "20.1.0",
     "@react-native-community/cli-platform-ios": "20.1.0",
@@ -54,10 +74,14 @@
     "@react-native/jest-preset": "0.85.2",
     "@react-native/metro-config": "0.85.2",
     "@react-native/typescript-config": "0.85.2",
+    "@rspack/cli": "1.7.11",
+    "@rspack/core": "1.7.11",
+    "@swc/helpers": "0.5.20",
     "@types/jest": "^29.5.13",
     "@types/react": "^19.2.0",
     "@types/react-test-renderer": "^19.1.0",
     "babel-plugin-module-resolver": "^5.0.3",
+    "dotenv": "16.4.7",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",
     "prettier": "2.8.8",
@@ -66,6 +90,6 @@
     "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">= 22.11.0"
+    "node": ">=22"
   }
 }

@@ -1,0 +1,20 @@
+# Ownership boundaries (GitLab/GitHub compatible).
+#
+# Contract packages + the host federation layer are WIRE PROTOCOLS between the
+# shell and independently-shipped remotes (additive-only; see
+# packages/platform/src/index.ts). Changes there need platform-team review —
+# the api-surface snapshots (etc/api-surface) make every change visible.
+#
+# Service packages are team-owned: add a line per team as teams onboard, e.g.
+#   /packages/leave/  @team-leave
+
+# ── Platform team ────────────────────────────────────────────────────────────
+/packages/sdk/                @mohsalsaleem
+/packages/platform/           @mohsalsaleem
+/packages/api-client/         @mohsalsaleem
+/packages/ui/                 @mohsalsaleem
+/src/services/federation/     @mohsalsaleem
+/etc/api-surface/             @mohsalsaleem
+/rspack.config.mjs            @mohsalsaleem
+/scripts/api-surface.mjs      @mohsalsaleem
+/docs/release-train.md        @mohsalsaleem

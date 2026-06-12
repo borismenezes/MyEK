@@ -34,7 +34,7 @@ interface AnimatedGradientBannerProps {
 export const AnimatedGradientBanner: React.FC<AnimatedGradientBannerProps> = ({
   height = 200,
   title = 'AI Agent',
-  subtitle = 'Ask me anything — leave, payslip, meetings, Jira.',
+  subtitle = '',
 }) => {
   const progress = useSharedValue(0);
 
@@ -79,7 +79,7 @@ export const AnimatedGradientBanner: React.FC<AnimatedGradientBannerProps> = ({
           <AgentLogo size={52} />
         </View>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
     </View>
   );

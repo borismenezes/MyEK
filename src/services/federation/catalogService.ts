@@ -1,0 +1,53 @@
+import { Platform } from 'react-native';
+import { apimClient } from '@api/apimClient';
+import { config } from '@/config';
+import { createLogger } from '@utils/logger';
+import type { ServiceDefinition } from './types';
+import { SHELL_VERSION } from './shellVersion';
+
+const log = createLogger('MF');
+
+/** A catalog widget entry — maps a home widgetId to its owning remote service. */
+export interface CatalogWidget {
+  id: string;
+  serviceId: string;
+  /**
+   * The remote widget fetches its own data (api.ts via @myek/api-client +
+   * the shared QueryClient); the host skips its useWidgetData fetch for this
+   * tile so there's no double request. Additive — absent means the legacy
+   * data-via-props contract.
+   */
+  selfFetching?: boolean;
+}
+
+export interface ServiceCatalogResponse {
+  services: ServiceDefinition[];
+  widgets: CatalogWidget[];
+}
+
+/**
+ * Fetch the per-app service catalog from the backend Registry (via core):
+ *   GET /v1/services/catalog?app=myek&platform=ios|android&shellVersion=X
+ *
+ * Reuses `apimClient` so the user's bearer is attached automatically (the
+ * catalog endpoint is behind the gateway). Returns the service definitions (each
+ * may carry an `mf` block) + the widget→service map the host uses to decide
+ * which home widgets are federated.
+ */
+export async function fetchServiceCatalog(): Promise<ServiceCatalogResponse> {
+  const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+  const res = await apimClient().get<ServiceCatalogResponse>('/v1/services/catalog', {
+    params: { app: config.mf.app, platform, shellVersion: SHELL_VERSION },
+  });
+  const body = res.data;
+  // A present-but-non-array field is a backend contract violation (schema drift,
+  // an error envelope returned with 200) — surface it instead of silently
+  // coercing to "no services". A genuinely absent field is fine as empty.
+  if (body && body.services !== undefined && !Array.isArray(body.services)) {
+    log.warn('mf.catalog.malformed', { reason: '`services` is not an array' });
+  }
+  return {
+    services: Array.isArray(body?.services) ? body.services : [],
+    widgets: Array.isArray(body?.widgets) ? body.widgets : [],
+  };
+}

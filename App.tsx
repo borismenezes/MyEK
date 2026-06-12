@@ -12,11 +12,14 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClientProvider } from '@tanstack/react-query';
 import RNShake from 'react-native-shake';
+import { queryClient } from '@services/queryClient';
 import { ThemeProvider, useTheme } from '@theme/index';
+import { PlatformBridge } from '@services/federation/PlatformBridge';
 import { RootNavigator } from '@navigation/index';
 import { SplashScreen } from '@screens/SplashScreen';
-import { EmployeeIdCardSheet } from '@components/index';
+import { EmployeeBusinessCard } from '@components/index';
 import { hydrateAuth, wireApiAuth, validateAuthConnection } from '@auth/index';
 import { startSyncManager } from '@offline/syncManager';
 import { useNetworkStatusSync } from '@hooks/useNetworkStatus';
@@ -32,25 +35,32 @@ const log = createLogger('App');
 const App: React.FC = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <Bootstrapper>
-            <ThemedStatusBar />
-            <RootNavigator />
-            {/* Single Employee-ID sheet mounted at app root. Visibility is
-                lifted into useUIStore so the shake-gesture listener below
-                and the existing tap-to-open call sites (HomeScreen,
-                ProfileScreen) all drive the same instance. */}
-            <GlobalIdSheet />
-            <ShakeListener />
-            {/* Branded overlay — sits on top of the React tree from first
-                frame and fades out once auth bootstrap finishes, so the
-                handoff from the native LaunchScreen (red) is seamless and
-                there's no flash of the navigator's plain spinner. */}
-            <SplashScreen />
-          </Bootstrapper>
-        </ThemeProvider>
-      </SafeAreaProvider>
+      {/* Shared QueryClient — singleton across host AND federated remotes
+          (@tanstack/react-query is in the MF share scope), so self-fetching
+          remote widgets join this cache/dedupe domain. */}
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <Bootstrapper>
+              <ThemedStatusBar />
+              {/* Publishes user + open-profile to @myek/platform for federated remotes. */}
+              <PlatformBridge />
+              <RootNavigator />
+              {/* Single Employee-ID sheet mounted at app root. Visibility is
+                  lifted into useUIStore so the shake-gesture listener below
+                  and the existing tap-to-open call sites (HomeScreen,
+                  ProfileScreen) all drive the same instance. */}
+              <GlobalIdSheet />
+              <ShakeListener />
+              {/* Branded overlay — sits on top of the React tree from first
+                  frame and fades out once auth bootstrap finishes, so the
+                  handoff from the native LaunchScreen (red) is seamless and
+                  there's no flash of the navigator's plain spinner. */}
+              <SplashScreen />
+            </Bootstrapper>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 };
@@ -142,7 +152,7 @@ const GlobalIdSheet: React.FC = () => {
   const setVisible = useUIStore(s => s.setIdSheetVisible);
   const status = useAuthStore(s => s.status);
   if (status !== 'authenticated') return null;
-  return <EmployeeIdCardSheet visible={visible} onClose={() => setVisible(false)} />;
+  return <EmployeeBusinessCard visible={visible} onClose={() => setVisible(false)} />;
 };
 
 /**

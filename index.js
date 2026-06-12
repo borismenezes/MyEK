@@ -2,9 +2,20 @@
  * @format
  */
 
+// Re.Pack ScriptManager: the singleton is auto-initialized natively. We do NOT
+// register a custom resolver — Re.Pack's ResolverPlugin (via the host's MF
+// defaultRuntimePlugins) rebases chunk URLs from the federation manifest.
+// `setStorage` gives ScriptManager a persistent (MMKV) backend for downloaded
+// chunk locators, so a federated remote fetched once loads from disk on later
+// (incl. offline) launches. See src/services/scriptStorage.ts.
+import { ScriptManager } from '@callstack/repack/client';
+import { scriptStorage } from './src/services/scriptStorage';
+
 import { AppRegistry, LogBox, NativeModules, Text } from 'react-native';
 import App from './App';
 import { name as appName } from './app.json';
+
+ScriptManager.shared.setStorage(scriptStorage);
 
 // Apply Urbanist as the default font for every <Text> in the app. The
 // theme tokens already declared `font.family: 'Urbanist'` (see

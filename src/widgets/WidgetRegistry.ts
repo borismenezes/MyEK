@@ -6,18 +6,11 @@ import type { ApiVersion, WidgetConfig, WidgetProps, WidgetSize } from '@/types'
 // applications they served (LeaveWidget, PayslipWidget, …) — see the
 // JSDoc inside each file for the original name.
 import { CounterTileWidget } from './CounterTileWidget';
-import { ActivityFeedWidget } from './ActivityFeedWidget';
-import { EventBannerWidget } from './EventBannerWidget';
 import { IdentityCardWidget } from './IdentityCardWidget';
-import { CountdownTileWidget } from './CountdownTileWidget';
 import { BalanceMeterWidget } from './BalanceMeterWidget';
-import { OutlookMeetingsWidget } from './OutlookMeetingsWidget';
 import { ProgressRingWidget } from './ProgressRingWidget';
-import { JourneyCardWidget } from './JourneyCardWidget';
 import { MetricCardWidget } from './MetricCardWidget';
-import { ScheduleListWidget } from './ScheduleListWidget';
 import { HoursProgressWidget } from './HoursProgressWidget';
-import { JiraTicketsWidget } from './JiraTicketsWidget';
 
 
 /**
@@ -54,16 +47,6 @@ export interface WidgetRegistryEntry {
 }
 
 export const WidgetRegistry: Record<string, WidgetRegistryEntry> = {
-  events: {
-    widgetId: 'events',
-    name: 'Today\'s Events',
-    description: 'Birthdays, holidays and team celebrations for the day',
-    icon: 'cake',
-    component: EventBannerWidget,
-    supportedSizes: ['small', 'large'],
-    surface: false,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/events/today', size: 'large', refreshIntervalMs: 0 },
-  },
   businessCard: {
     widgetId: 'businessCard',
     name: 'Business Card',
@@ -111,19 +94,9 @@ export const WidgetRegistry: Record<string, WidgetRegistryEntry> = {
     description: 'Hours logged this week',
     icon: 'timesheet',
     component: HoursProgressWidget,
-    supportedSizes: ['small'],
+    supportedSizes: ['small', 'large'],
     surface: true,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/timesheet/week', size: 'small' },
-  },
-  documents: {
-    widgetId: 'documents',
-    name: 'Documents',
-    description: 'Next document to expire',
-    icon: 'passport',
-    component: CountdownTileWidget,
-    supportedSizes: ['small'],
-    surface: true,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/documents/next-expiry', size: 'small' },
+    defaultConfig: { apiVersion: 'v1', endpoint: '/timesheet/week', size: 'large' },
   },
   applications: {
     widgetId: 'applications',
@@ -134,58 +107,6 @@ export const WidgetRegistry: Record<string, WidgetRegistryEntry> = {
     supportedSizes: ['small'],
     surface: true,
     defaultConfig: { apiVersion: 'v1', endpoint: '/applications/summary', size: 'small' },
-  },
-  appreciations: {
-    widgetId: 'appreciations',
-    name: 'Appreciations',
-    description: 'Recent peer recognition',
-    icon: 'medal',
-    component: ActivityFeedWidget,
-    supportedSizes: ['large'],
-    surface: true,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/appreciations/latest', size: 'large' },
-  },
-  myTrips: {
-    widgetId: 'myTrips',
-    name: 'My Trips',
-    description: 'Next personal trip / staff travel',
-    icon: 'plane',
-    component: JourneyCardWidget,
-    // Large-only so My Trips renders at the same full-width dimensions as
-    // Outlook Meetings / Roster / Appreciations on the home grid.
-    supportedSizes: ['large'],
-    surface: true,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/trips/next', size: 'large' },
-  },
-  roster: {
-    widgetId: 'roster',
-    name: 'Cabin Crew Roster',
-    description: 'This week’s flight assignments',
-    icon: 'roster',
-    component: ScheduleListWidget,
-    supportedSizes: ['large'],
-    surface: true,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/roster/week', size: 'large' },
-  },
-  jiraTickets: {
-    widgetId: 'jiraTickets',
-    name: 'Jira Tickets',
-    description: 'Open tickets assigned to you, grouped by status',
-    icon: 'layers',
-    component: JiraTicketsWidget,
-    supportedSizes: ['small'],
-    surface: true,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/jira/tickets', size: 'small' },
-  },
-  outlookMeetings: {
-    widgetId: 'outlookMeetings',
-    name: 'Outlook Meetings',
-    description: 'Today\'s calendar at a glance',
-    icon: 'meeting',
-    component: OutlookMeetingsWidget,
-    supportedSizes: ['large'],
-    surface: true,
-    defaultConfig: { apiVersion: 'v1', endpoint: '/outlook/meetings/today', size: 'large' },
   },
 };
 
@@ -224,24 +145,12 @@ export function resolveWidgetSize(raw: unknown, widgetId: string): WidgetSize {
  * so adding a widget here just requires it to exist in the registry.
  */
 export const DEFAULT_LAYOUT_ORDER: string[] = [
-  // `events` is first so today's celebrations land above the fold. The
-  // widget self-hides on the home grid when no event matches today
-  // (handled by HomeScreen's visibleLayout filter), so it costs nothing
-  // on a quiet day — and on a celebratory day it greets the user
-  // instantly without scrolling.
-  'events',
   'businessCard',
   'leave',
   'attendance',
   'payslip',
-  'timesheet',
-  'outlookMeetings',
-  'documents',
-  'jiraTickets',
-  'appreciations',
   'applications',
-  'myTrips',
-  'roster'
+  'timesheet',
 ];
 
 export const defaultWidgetLayout: WidgetConfig[] = DEFAULT_LAYOUT_ORDER.map(createWidgetConfig).filter(

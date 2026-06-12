@@ -135,6 +135,28 @@ export const config = {
     level: pick(LOG_LEVEL, 'info') as 'debug' | 'info' | 'warn' | 'error',
     remoteEnabled: pick(LOG_REMOTE_ENABLED, 'false') === 'true',
   },
+  // ── Module Federation (micro-frontend host) ───────────────────────────────
+  // LIVE (P2): authService kicks off the catalog fetch (useCatalogStore.load)
+  // after sign-in; widgets with `mf` coords in the catalog render federated via
+  // FederatedWidget, falling back to the in-host component on any failure. With
+  // `enabled` false (or an empty/failed catalog) the app runs as a monolith.
+  mf: {
+    // Which application's remotes this host loads (app-scoped OTA + catalog).
+    app: 'myek',
+    // Per-app service catalog (Registry). Remote `mf` coords come from here:
+    // GET {catalogUrl}?app=myek&platform=ios|android&shellVersion=X.
+    catalogUrl: `${apiBaseUrl}/v1/services/catalog`,
+    // Host whose loopback (localhost/127.0.0.1) is swapped in catalog-supplied
+    // manifest URLs so they're reachable from this client/emulator. MyEK's
+    // backend is a real host, so in practice this is a no-op rewrite.
+    otaBaseUrl: apiBaseUrl,
+    // Hostname allowlist for remote manifest URLs (release builds). Empty → skip.
+    allowedRemoteHosts: [] as string[],
+    // Master switch for the federated-remote path. ON: catalog-listed widgets
+    // load from OTA remotes, each gracefully falling back to its in-host
+    // counterpart until the remote bundle is live (and on any load failure).
+    enabled: true,
+  },
 } as const;
 
 export type AppConfigShape = typeof config;

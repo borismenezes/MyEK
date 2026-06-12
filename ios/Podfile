@@ -26,7 +26,11 @@ target 'MyEK' do
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.
-    :app_path => "#{Pod::Config.instance.installation_root}/.."
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    # Re.Pack Module Federation v2 + Hermes is incompatible (mirrors
+    # enterprise-app). Build against JSC; ios/.xcode.env sets USE_HERMES=false
+    # so react-native-xcode.sh skips hermesc on the MF2 bundle.
+    :hermes_enabled => false
   )
 
   post_install do |installer|

@@ -78,3 +78,8 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+dist/
+
+# OTA code-signing private key (public key + Info.plist embed are committed)
+code-signing.pem
+code-signing.pem.pub

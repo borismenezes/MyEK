@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">MyEK</string>
+    <!-- OTA code-signing public key — Re.Pack's ScriptManager verifies each
+         remote chunk's JWT signature against this (CodeSigningUtils reads the
+         `RepackPublicKey` string, strips PEM headers/newlines, base64-decodes). -->
+    <string name="RepackPublicKey">MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2EKvcUSKAia57fYJ8ihuuRz5wpu6QqwOpEjKM/8TX2YSOYdSU+UbnoHye9EsgsAIVpYjQQmgnlVrdWMUtxCQ6dhL0OibcD7nRxKb2Gsl61vunWk199fV7nODu8prLIJfi1BYuXa7iGyZkAsDOJ2B5+Lrv1NCPdDRV4G9XGNkiqiMvHh+alpLxxsVVGyxIO50BNd08p38iV5AWJJTJgXvtid73i1SzVaZkJehic/NkMYp/augyIncEjgxOvzeTs5/fkjZzWV48c6CwfqbRq/wqNLvOV1aD6HuGHsWYRVLOO/UK3WtHvO8pYL/Iy/kr+jSMMMuW/uTSOBYNMYJZNEkywIDAQAB</string>
 </resources>

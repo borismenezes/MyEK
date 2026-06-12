@@ -1,6 +1,5 @@
 import type { AppDetailLayout, AppManifestEntry } from '@/types';
 import { LeaveDetailLayout } from './LeaveDetailLayout';
-import { PlatinumVouchersDetailLayout } from './PlatinumVouchersDetailLayout';
 import { AttendanceDetailLayout } from './AttendanceDetailLayout';
 import { TimesheetDetailLayout } from './TimesheetDetailLayout';
 
@@ -23,7 +22,6 @@ export interface DetailLayoutProps {
  */
 export const DetailLayoutRegistry: Record<AppDetailLayout, React.FC<DetailLayoutProps>> = {
   list: LeaveDetailLayout,
-  vouchers: PlatinumVouchersDetailLayout,
   attendanceWeek: AttendanceDetailLayout,
   timesheetLog: TimesheetDetailLayout,
 };

@@ -14,13 +14,23 @@ export const ProfileScreen: React.FC = () => {
 
   if (!user) return null;
 
+  // Staff number from Graph /me (user.staffId), "S"-prefixed. Empty until /me lands.
+  const rawStaffId = user.staffId ?? '';
+  const staffId = rawStaffId && !/^s/i.test(rawStaffId) ? `S${rawStaffId}` : rawStaffId;
+
   const rows = [
     { i: 'mail', t: 'Email', s: user.email },
     { i: 'building', t: 'Department', s: user.department },
-    { i: 'medal', t: 'Grade', s: user.grade },
-    { i: 'pin', t: 'Location', s: user.location },
-    { i: 'calendar', t: 'Joined', s: new Date(user.joinedAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) },
-  ];
+    { i: 'medal', t: 'Grade', s: user.grade ?? '' },
+    { i: 'pin', t: 'Location', s: user.location ?? '' },
+    {
+      i: 'calendar',
+      t: 'Joined',
+      s: user.joinedAt
+        ? new Date(user.joinedAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+        : '',
+    },
+  ].filter(r => r.s); // hide rows with no value (no fake placeholders)
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -43,7 +53,7 @@ export const ProfileScreen: React.FC = () => {
               {user.firstName} {user.lastName}
             </Text>
             <Text style={{ fontSize: 13, color: theme.colors.muted, marginTop: 2 }}>{user.jobTitle}</Text>
-            <Text style={{ fontSize: 12, color: theme.colors.muted, marginTop: 4 }}>ID: {user.employeeId}</Text>
+            <Text style={{ fontSize: 12, color: theme.colors.muted, marginTop: 4 }}>ID: {staffId || '—'}</Text>
           </View>
         </View>
       </View>

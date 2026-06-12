@@ -1,0 +1,126 @@
+import React from 'react';
+import { Text, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { Icon, useTheme, widgetTheme, WidgetErrorState } from '@myek/ui';
+import { fetchLeaveWidget, LEAVE_QUERY_KEYS } from '../api';
+import type { LeaveBalancePayload, WidgetProps } from '../types';
+
+/**
+ * Leave balance tile — the `leave` remote's federated home widget, and the
+ * REFERENCE implementation of the self-fetching widget contract: the remote
+ * owns its data (api.ts via @myek/api-client + the host's shared QueryClient),
+ * the host only mounts it. `props.data` is kept as a cross-version fallback —
+ * a shell older than 4.3.0 hasn't wired the api-client slots, so the query
+ * errors there and the host-fetched payload still renders the tile.
+ *
+ * Colours come from `useTheme()` (the host's published theme), so the tile
+ * tracks light/dark with the shell.
+ */
+export const LeaveBalanceWidget: React.FC<WidgetProps<LeaveBalancePayload>> = ({ config, data: hostData }) => {
+  const query = useQuery({
+    queryKey: LEAVE_QUERY_KEYS.widget,
+    queryFn: fetchLeaveWidget,
+    refetchInterval: config?.refreshIntervalMs ?? false,
+  });
+  // Own fetch wins; host-fed data is the explicit compatibility fallback.
+  const data = query.data ?? hostData;
+
+  if (!data) {
+    // Self-fetch failed with no host-fed fallback (the normal self-fetching
+    // case — the host skips its fetch). A blank tile here would be silent
+    // degradation: surface the failure with a retry instead.
+    if (query.isError) return <WidgetErrorState onRetry={() => void query.refetch()} />;
+    return null; // initial query tick — data or error arrives next render
+  }
+  const label = config?.applicationName ?? 'Leave';
+  const size = config?.layout?.size ?? config?.size;
+  if (size === 'small') return <BalanceMeterSmall data={data} label={label} />;
+  return <BalanceMeterLarge data={data} label={label} />;
+};
+
+const BalanceMeterSmall: React.FC<{ data: LeaveBalancePayload; label: string }> = ({ data, label }) => {
+  const theme = useTheme();
+  const remaining = data.total - data.used;
+  const pct = (data.used / Math.max(data.total, 1)) * 100;
+  return (
+    <View style={{ flex: 1, gap: 6 }}>
+      <Header label={label} />
+      <View style={{ flex: 1 }} />
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+        <Text style={{ fontSize: widgetTheme.fontSize.hero, fontWeight: widgetTheme.fontWeight.heavy, letterSpacing: -1, color: theme.colors.ink, lineHeight: 36 }}>
+          {remaining}
+        </Text>
+        <Text style={{ fontSize: widgetTheme.fontSize.body, color: theme.colors.muted, fontWeight: widgetTheme.fontWeight.semibold }}>days</Text>
+      </View>
+      <View style={{ height: 4, backgroundColor: theme.colors.bg, borderRadius: 999, overflow: 'hidden', marginTop: 4 }}>
+        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: theme.colors.ekRed }} />
+      </View>
+      <Text style={{ fontSize: widgetTheme.fontSize.caption, color: theme.colors.muted }}>
+        {data.used}/{data.total} used
+      </Text>
+    </View>
+  );
+};
+
+const BalanceMeterLarge: React.FC<{ data: LeaveBalancePayload; label: string }> = ({ data, label }) => {
+  const theme = useTheme();
+  const remaining = data.total - data.used;
+  return (
+    <View style={{ flex: 1 }}>
+      <Header label={label} />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 14, marginTop: 14 }}>
+        <View>
+          <Text style={{ fontSize: widgetTheme.fontSize.hero, fontWeight: widgetTheme.fontWeight.heavy, letterSpacing: -1, color: theme.colors.ink, lineHeight: 38 }}>
+            {remaining}
+          </Text>
+          <Text style={{ fontSize: widgetTheme.fontSize.label, color: theme.colors.muted, fontWeight: widgetTheme.fontWeight.semibold }}>days remaining</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Bar label="Used" value={data.used} total={data.total} color={theme.colors.ekRed} />
+          <View style={{ height: 6 }} />
+          <Bar label="Pending" value={data.pending} total={data.total} color={theme.colors.amber} />
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const Header: React.FC<{ label: string }> = ({ label }) => {
+  const theme = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 7,
+          backgroundColor: 'rgba(198,12,48,0.10)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        <Icon name="calendar" size={12} color={theme.colors.ekRed} />
+      </View>
+      <Text style={{ fontSize: widgetTheme.fontSize.label, fontWeight: widgetTheme.fontWeight.bold, color: theme.colors.mutedStrong, letterSpacing: 0.2, textTransform: 'uppercase' }}>
+        {label}
+      </Text>
+    </View>
+  );
+};
+
+const Bar: React.FC<{ label: string; value: number; total: number; color: string }> = ({ label, value, total, color }) => {
+  const theme = useTheme();
+  const pct = (value / Math.max(total, 1)) * 100;
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: widgetTheme.fontSize.label, color: theme.colors.muted }}>{label}</Text>
+        <Text style={{ fontSize: widgetTheme.fontSize.label, color: theme.colors.ink, fontWeight: widgetTheme.fontWeight.semibold }}>
+          {value}/{total}
+        </Text>
+      </View>
+      <View style={{ height: 5, backgroundColor: theme.colors.bg, borderRadius: 999, overflow: 'hidden', marginTop: 4 }}>
+        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color }} />
+      </View>
+    </View>
+  );
+};

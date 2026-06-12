@@ -1,0 +1,14 @@
+{
+  "name": "@myek/platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MyEK cross-bundle platform bridge \u2014 the host populates globalThis slots (logged-in user, open-profile callback); remotes read them. Avoids module-singleton fragility across federated bundles (ADR-0022 style). Also hosts the shared vCard builder.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@myek/sdk": "*"
+  }
+}
