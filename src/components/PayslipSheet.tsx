@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { Dimensions, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -11,15 +11,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { captureRef } from 'react-native-view-shot';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SvgXml } from 'react-native-svg';
 import { Icon } from './Icon';
-import { EMIRATES_LOGO_SVG } from '../assets/emiratesLogoSource';
-import { DNATA_LOGO_SVG } from '../assets/dnataLogoSource';
-import { payslipDetailsService } from '@services/payslipDetailsService';
-import { useAuthStore } from '@store/useAuthStore';
+import { FederatedRemote } from '@services/federation/FederatedRemote';
+import { useCatalogStore } from '@store/useCatalogStore';
 import { useTheme } from '@theme/index';
-import payslipDefault from '@services/defaults/payslipDetails.json';
-import type { PayslipDocumentPayload, PayslipLineItem } from '@/types';
+import { config as appConfig } from '@config/index';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -29,27 +25,31 @@ interface PayslipSheetProps {
 }
 
 /**
- * Bottom-sheet drawer that renders a printable payslip for the signed-in
- * employee.
+ * Bottom-sheet CHROME for the payslip. The document itself — letterhead,
+ * layout, data fetch — is the `payslip` remote's `./screens` expose
+ * (packages/payslip/src/screens/PayslipDocumentScreen), mounted federated so
+ * the payslip team ships document changes OTA with no host release. The host
+ * owns only the presentation idioms: backdrop + spring sheet, the header
+ * (title / share / close), and the share capture (`react-native-view-shot`
+ * is a host-linked native module; capturing the wrapping View includes the
+ * remote-rendered children — it's one native view tree).
  *
- * Data comes from `payslipDetails.json` (the bundled default until a real
- * payslip-document service is wired). Employee name + number are overridden
- * at render time from the auth store so the document reflects the real user.
- *
- * Share button captures the payslip view as a high-resolution PNG via
- * `react-native-view-shot` and hands it to the OS share sheet — users can
- * then save to Files / mail / message. For true PDF export, install
- * `react-native-html-to-pdf` and replace the capture path in `handleShare`.
+ * The sheet unmounts fully after the close animation, so each open freshly
+ * mounts the remote and re-runs its `refetchOnMount: 'always'` query —
+ * payslips are high-stakes, never served stale. Mirrors EmployeeBusinessCard's
+ * host-chrome/remote-face split, but with no in-host fallback: the document
+ * moved out entirely, and FederatedRemote's error boundary shows an explicit
+ * retry state when the remote can't load (never a silent blank).
  */
 export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const user = useAuthStore(s => s.user);
   const progress = useSharedValue(0);
   const [mounted, setMounted] = useState(visible);
-  const [fetched, setFetched] = useState<PayslipDocumentPayload | null>(null);
-  const [_loading, setLoading] = useState(false);
   const docRef = useRef<View>(null);
+  // Resolve the owning service from the catalog (same lookup the home tile
+  // uses). Subscribed so the sheet picks up a late-arriving catalog.
+  const payslipService = useCatalogStore(s => s.widgetToService.payslip);
 
   useEffect(() => {
     if (visible) {
@@ -61,35 +61,6 @@ export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) 
       });
     }
   }, [visible, progress]);
-
-  // Fetch live payslip data every time the drawer is opened. The reset on
-  // close ensures the next open re-fetches even if the underlying employee
-  // id hasn't changed — payslips are high-stakes, never serve stale data.
-  useEffect(() => {
-    if (!visible) {
-      setFetched(null);
-      setLoading(false);
-      return;
-    }
-    const employeeId = user?.employeeId;
-    if (!employeeId) return;
-    let cancelled = false;
-    setLoading(true);
-    payslipDetailsService
-      .fetch(employeeId)
-      .then(data => {
-        if (!cancelled) setFetched(data);
-      })
-      .catch(() => {
-        // Fall back to bundled default below.
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [visible, user?.employeeId]);
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [
@@ -113,10 +84,7 @@ export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) 
 
   if (!mounted && !visible) return null;
 
-  const data = fetched ?? (payslipDefault as PayslipDocumentPayload);
-  const employeeNumber = user?.staffId || data.employeeNumber;
-  const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : data.employeeName;
-  const employeeName = fullName.length > 0 ? fullName.toUpperCase() : data.employeeName;
+  const federate = appConfig.mf.enabled && !!payslipService;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
@@ -154,9 +122,6 @@ export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) 
             <Text style={{ fontSize: 22, fontWeight: '700', color: theme.colors.ink, letterSpacing: -0.4 }}>
               Payslip
             </Text>
-            <Text style={{ fontSize: 12, color: theme.colors.muted, marginTop: 2 }}>
-              {data.periodLabel}
-            </Text>
           </View>
           <Pressable
             onPress={handleShare}
@@ -179,15 +144,24 @@ export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) 
         <ScrollView
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}>
-          <View
-            ref={docRef}
-            collapsable={false}
-            style={styles.paper}>
-            <PayslipDocument
-              data={data}
-              employeeNumber={employeeNumber}
-              employeeName={employeeName}
-            />
+          <View ref={docRef} collapsable={false} style={styles.paper}>
+            {federate ? (
+              // The sheet fully unmounts after the close animation (`mounted`
+              // gate above), so every open is a fresh mount and the remote's
+              // `refetchOnMount: 'always'` query re-runs — no key juggling.
+              <FederatedRemote service={payslipService!} />
+            ) : (
+              // No catalog entry for the payslip service (offline first run /
+              // federation disabled): say so explicitly — never a blank doc.
+              <View style={{ alignItems: 'center', padding: 24, gap: 8 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#1a1a1a', textAlign: 'center' }}>
+                  Payslip unavailable
+                </Text>
+                <Text style={{ fontSize: 13, color: '#5b5b5b', textAlign: 'center' }}>
+                  Check your connection and reopen this screen.
+                </Text>
+              </View>
+            )}
           </View>
         </ScrollView>
       </Animated.View>
@@ -195,183 +169,9 @@ export const PayslipSheet: React.FC<PayslipSheetProps> = ({ visible, onClose }) 
   );
 };
 
-// ─── Document body ─────────────────────────────────────────────────────
-
-const PayslipDocument: React.FC<{
-  data: PayslipDocumentPayload;
-  employeeNumber: string;
-  employeeName: string;
-}> = ({ data, employeeNumber, employeeName }) => {
-  const paymentsTotal = sumLineItems(data.payments);
-  const deductionsTotal = sumLineItems(data.deductions);
-  return (
-    <View style={{ gap: 12 }}>
-      <BrandHeader />
-      <View style={{ alignItems: 'center', gap: 6 }}>
-        <Text style={styles.confidential}>CONFIDENTIAL</Text>
-        <Text style={styles.period}>{data.periodLabel}</Text>
-      </View>
-
-      <View style={styles.employeeBox}>
-        <KeyVal label="Employee" value={`${employeeNumber} - ${employeeName}`} divider />
-        <View style={{ flexDirection: 'row' }}>
-          <View style={{ flex: 1.2 }}>
-            <KeyVal label="Position" value={data.position} compact />
-            <KeyVal label="Organization" value={data.organization} compact />
-          </View>
-          <View style={{ flex: 1, borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: DOCS.line, paddingLeft: 12 }}>
-            <KeyVal label="DOJ" value={data.doj} compact />
-            <KeyVal label="Grade" value={data.grade} compact />
-          </View>
-        </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <LineItemTable title="Payments" rows={data.payments} total={paymentsTotal} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <LineItemTable title="Deductions" rows={data.deductions} total={deductionsTotal} />
-        </View>
-      </View>
-
-      <BankRow
-        branchName={data.bankBranchName}
-        accountNumber={data.accountNumber}
-        netPay={data.netPayAmount}
-        currency={data.currency}
-      />
-
-      <View style={styles.messageBox}>
-        <View style={styles.messageHeader}>
-          <Text style={styles.messageHeaderText}>Message</Text>
-        </View>
-        <View style={{ padding: 10 }}>
-          <Text style={{ fontSize: 11, color: DOCS.ink, lineHeight: 16 }}>{data.message}</Text>
-        </View>
-      </View>
-    </View>
-  );
-};
-
-// Letterhead marks: official brand SVGs (hardcoded brand colours — these are
-// deliberately NOT theme-tinted; the document is a fixed white printable).
-// Heights derive from each source's viewBox so the marks scale undistorted.
-const EMIRATES_LOGO_WIDTH = 56; // viewBox 128×150 → ≈66 tall
-const EMIRATES_LOGO_HEIGHT = Math.round(EMIRATES_LOGO_WIDTH * (150 / 128));
-const DNATA_LOGO_WIDTH = 72; // viewBox 135×102 → ≈54 tall
-const DNATA_LOGO_HEIGHT = Math.round(DNATA_LOGO_WIDTH * (102 / 135));
-
-const BrandHeader: React.FC = () => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
-    <SvgXml xml={EMIRATES_LOGO_SVG} width={EMIRATES_LOGO_WIDTH} height={EMIRATES_LOGO_HEIGHT} />
-    <SvgXml xml={DNATA_LOGO_SVG} width={DNATA_LOGO_WIDTH} height={DNATA_LOGO_HEIGHT} />
-  </View>
-);
-
-const KeyVal: React.FC<{ label: string; value: string; divider?: boolean; compact?: boolean }> = ({
-  label,
-  value,
-  divider,
-  compact,
-}) => {
-  // Compact rows (Position / Organization / DOJ / Grade) now match the
-  // payments/deductions row font size (11) so the document reads with a
-  // consistent body weight. Values wrap onto the next line when too long
-  // for one — no truncation, no font-shrinking.
-  const fontSize = compact ? 11 : 12;
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        paddingVertical: compact ? 5 : 8,
-        borderBottomWidth: divider ? StyleSheet.hairlineWidth : 0,
-        borderBottomColor: DOCS.line,
-      }}>
-      <Text style={[styles.kvLabel, { width: 84, fontSize }]}>{label}</Text>
-      <Text style={[styles.kvColon, { fontSize }]}>:</Text>
-      <Text style={[styles.kvValue, { flex: 1, fontSize, lineHeight: fontSize + 4 }]}>
-        {value}
-      </Text>
-    </View>
-  );
-};
-
-const LineItemTable: React.FC<{ title: string; rows: PayslipLineItem[]; total: number }> = ({
-  title,
-  rows,
-  total,
-}) => (
-  <View style={styles.table}>
-    <View style={styles.tableHeader}>
-      <Text style={styles.tableHeaderTitle}>{title}</Text>
-      <Text style={styles.tableHeaderTitle}>Amount</Text>
-    </View>
-    <View style={{ padding: 10, gap: 6, minHeight: 120 }}>
-      {rows.map((r, i) => (
-        <View key={`${title}-${i}`} style={styles.tableRow}>
-          <Text style={styles.tableRowLabel} numberOfLines={1}>
-            {r.label}
-          </Text>
-          <Text style={styles.tableRowAmount}>{formatAmount(r.amount)}</Text>
-        </View>
-      ))}
-    </View>
-    <View style={styles.tableTotal}>
-      <Text style={styles.tableTotalLabel}>Total</Text>
-      <Text style={styles.tableTotalAmount}>{formatAmount(total)}</Text>
-    </View>
-  </View>
-);
-
-const BankRow: React.FC<{ branchName: string; accountNumber: string; netPay: number; currency: string }> = ({
-  branchName,
-  accountNumber,
-  netPay,
-}) => (
-  <View style={styles.bankBox}>
-    <View style={styles.bankHeader}>
-      <Text style={[styles.bankHeaderText, { flex: 1.4 }]}>Bank - Branch Name</Text>
-      <Text style={[styles.bankHeaderText, { flex: 1.6 }]}>Account Number</Text>
-      <Text style={[styles.bankHeaderText, { flex: 1, textAlign: 'right' }]}>Net Pay Amount</Text>
-    </View>
-    <View style={styles.bankRow}>
-      <Text style={[styles.bankRowText, { flex: 1.4 }]} numberOfLines={1}>
-        {branchName}
-      </Text>
-      <Text style={[styles.bankRowText, { flex: 1.6 }]} numberOfLines={1}>
-        {accountNumber}
-      </Text>
-      <Text style={[styles.bankRowText, { flex: 1, textAlign: 'right', fontWeight: '700' }]} numberOfLines={1}>
-        {formatAmount(netPay)}
-      </Text>
-    </View>
-  </View>
-);
-
-// ─── helpers ─────────────────────────────────────────────────────────
-
-function sumLineItems(items: PayslipLineItem[]): number {
-  return items.reduce((sum, i) => sum + i.amount, 0);
-}
-
-function formatAmount(amount: number): string {
-  return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-// ─── styles ─────────────────────────────────────────────────────────
-// Document styles deliberately use fixed colours (not theme tokens) so the
-// payslip prints identically in light and dark mode — a paystub renders the
-// same on paper regardless of OS appearance.
-const DOCS = {
-  paper: '#FFFFFF',
-  ink: '#1a1a1a',
-  muted: '#5b5b5b',
-  line: '#cfcfcf',
-  softGrey: '#e9e9eb',
-  brandRed: '#9b0c2e',
-};
+// Paper colours stay fixed (not theme tokens): the printable renders
+// identically in light and dark mode, like a paper paystub.
+const PAPER = { bg: '#FFFFFF', line: '#cfcfcf' };
 
 const styles = StyleSheet.create({
   headerRow: {
@@ -391,146 +191,10 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   paper: {
-    backgroundColor: DOCS.paper,
+    backgroundColor: PAPER.bg,
     borderRadius: 6,
     padding: 18,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DOCS.line,
-  },
-  confidential: {
-    color: DOCS.brandRed,
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
-  period: {
-    color: DOCS.brandRed,
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-    marginTop: 2,
-  },
-  employeeBox: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DOCS.line,
-    backgroundColor: '#fafafa',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  kvLabel: {
-    fontSize: 12,
-    color: DOCS.ink,
-    fontWeight: '700',
-  },
-  kvColon: {
-    fontSize: 12,
-    color: DOCS.ink,
-    paddingHorizontal: 6,
-    fontWeight: '700',
-  },
-  kvValue: {
-    fontSize: 12,
-    color: DOCS.ink,
-  },
-  table: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DOCS.line,
-    backgroundColor: DOCS.paper,
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: DOCS.softGrey,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: DOCS.line,
-  },
-  tableHeaderTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: DOCS.ink,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 6,
-  },
-  tableRowLabel: {
-    flex: 1,
-    fontSize: 11,
-    color: DOCS.ink,
-  },
-  tableRowAmount: {
-    fontSize: 11,
-    color: DOCS.ink,
-    fontVariant: ['tabular-nums'],
-  },
-  tableTotal: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: DOCS.softGrey,
-    borderTopWidth: 1,
-    borderTopColor: DOCS.ink,
-  },
-  tableTotalLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: DOCS.ink,
-  },
-  tableTotalAmount: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: DOCS.ink,
-    fontVariant: ['tabular-nums'],
-  },
-  bankBox: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DOCS.line,
-    backgroundColor: DOCS.paper,
-  },
-  bankHeader: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: '#fafafa',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: DOCS.line,
-    gap: 8,
-  },
-  bankHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: DOCS.ink,
-  },
-  bankRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  bankRowText: {
-    fontSize: 11,
-    color: DOCS.ink,
-  },
-  messageBox: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DOCS.line,
-    backgroundColor: DOCS.paper,
-  },
-  messageHeader: {
-    backgroundColor: '#fafafa',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: DOCS.line,
-  },
-  messageHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: DOCS.ink,
+    borderColor: PAPER.line,
   },
 });
