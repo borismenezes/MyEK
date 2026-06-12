@@ -4,7 +4,11 @@ import * as Repack from '@callstack/repack';
 import rspack from '@rspack/core';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import { loadBuildEnv } from './packages/sdk/rspack/load-env.mjs';
-import { resolveSharedVersions, resolveWorkspaceVersions } from './packages/sdk/rspack/shared-versions.mjs';
+import {
+  computeCompatToken,
+  resolveSharedVersions,
+  resolveWorkspaceVersions,
+} from './packages/sdk/rspack/shared-versions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -120,6 +124,12 @@ export default Repack.defineRspackConfig(env => {
       // @react-native-masked-view is optionally required by
       // @react-navigation/elements; MyEK doesn't use it.
       new rspack.IgnorePlugin({ resourceRegExp: /^@react-native-masked-view/ }),
+      // This build's share-scope compat token (opaque hash — see
+      // shared-versions.mjs). dynamicRemotes diffs it against each remote
+      // manifest's `compat` and emits mf.shared.mismatch telemetry.
+      new rspack.DefinePlugin({
+        'process.env.MYEK_MF_COMPAT': JSON.stringify(computeCompatToken(__dirname)),
+      }),
     ],
   };
 });

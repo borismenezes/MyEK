@@ -5,6 +5,7 @@ import { useAuthStore } from '@store/useAuthStore';
 import { useUIStore } from '@store/useUIStore';
 import {
   publishBridgeProtocol,
+  registerHostActions,
   setActiveTheme,
   setCopyToClipboard,
   setOpenProfile,
@@ -58,22 +59,31 @@ export function PlatformBridge(): null {
     );
   }, [user, photo]);
 
+  // Host actions: the typed registry (hostAction) is the canonical surface;
+  // the legacy per-action slots are populated with the SAME handlers so
+  // already-published remote bundles (which read those slots) keep working.
+  // A new shell capability = one entry in this map + its payload type in
+  // @myek/sdk — never a new bespoke slot.
   useEffect(() => {
-    setOpenProfile(() => openIdSheet(true));
-    return () => setOpenProfile(null);
-  }, [openIdSheet]);
-
-  // Publish a copy action so remotes (the business card) can copy fields without
-  // depending on the native clipboard module. Shows a short confirmation toast.
-  useEffect(() => {
-    setCopyToClipboard((text, label) => {
-      if (!text) return;
-      Clipboard.setString(text);
-      const msg = label ? `${label} copied` : 'Copied';
+    const openProfile = (): void => openIdSheet(true);
+    const copyToClipboard = (payload: { text: string; label?: string }): void => {
+      if (!payload?.text) return;
+      Clipboard.setString(payload.text);
+      const msg = payload.label ? `${payload.label} copied` : 'Copied';
+      // The copy action carries its own feedback so remotes don't each
+      // invent one. iOS shows none (system convention); Android toasts.
       if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.SHORT);
-    });
-    return () => setCopyToClipboard(null);
-  }, []);
+    };
+
+    registerHostActions({ openProfile, copyToClipboard });
+    setOpenProfile(openProfile);
+    setCopyToClipboard((text, label) => copyToClipboard({ text, label }));
+    return () => {
+      registerHostActions(null);
+      setOpenProfile(null);
+      setCopyToClipboard(null);
+    };
+  }, [openIdSheet]);
 
   return null;
 }

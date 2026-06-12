@@ -24,6 +24,16 @@ const PLUGIN_NAME = 'MfIntegrityPlugin';
 const MANIFEST_NAME = 'mf-manifest.json';
 
 export class MfIntegrityPlugin {
+  /**
+   * @param {Object} [opts]
+   * @param {string} [opts.compatToken] opaque share-scope token
+   *   (shared-versions.mjs `computeCompatToken`) written as `manifest.compat`.
+   *   A hash by design — never raw versions/SHAs; the manifest is public.
+   */
+  constructor({ compatToken } = {}) {
+    this.compatToken = compatToken;
+  }
+
   apply(compiler) {
     compiler.hooks.thisCompilation.tap(PLUGIN_NAME, compilation => {
       compilation.hooks.processAssets.tap(
@@ -44,12 +54,13 @@ export class MfIntegrityPlugin {
 
           const integrity = {};
           for (const [name, asset] of Object.entries(assets)) {
-            if (!name.endsWith('.bundle') || name.endsWith('.bundle.map')) continue;
+            if (!name.endsWith('.bundle')) continue; // .map files don't match '.bundle'
             const buffer = asset.buffer ? asset.buffer() : Buffer.from(asset.source());
             integrity[name] = 'sha256-' + createHash('sha256').update(buffer).digest('base64');
           }
 
           manifest.integrity = integrity;
+          if (this.compatToken) manifest.compat = this.compatToken;
           compilation.updateAsset(
             MANIFEST_NAME,
             new rspack.sources.RawSource(JSON.stringify(manifest, null, 2)),

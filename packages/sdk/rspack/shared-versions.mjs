@@ -9,6 +9,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 
 export const SHARED_PACKAGES = [
@@ -29,6 +30,12 @@ export const SHARED_PACKAGES = [
   // Large/native singletons used by both shell and remotes.
   'react-native-svg',
   'react-native-mmkv',
+  // TanStack Query MUST be a singleton so host and every remote share one
+  // QueryClient identity (the host's QueryClientProvider context). Without
+  // this a remote's useQuery() would fall back to a separate cache and the
+  // dedupe/invalidation wins are lost. Mirrors enterprise-app.
+  '@tanstack/query-core',
+  '@tanstack/react-query',
 ];
 
 /**
@@ -95,4 +102,47 @@ function readVersion(require, rootDir, name) {
       );
     }
   }
+}
+
+/**
+ * Opaque share-scope compatibility token.
+ *
+ * SHA-256 over the sorted shared+workspace package versions plus the bridge
+ * PROTOCOL_VERSION. Both the host build (DefinePlugin) and every remote build
+ * (MfIntegrityPlugin → `mf-manifest.json` `compat` field) stamp it; the host
+ * compares at manifest-fetch time and emits `mf.shared.mismatch` telemetry
+ * when a published remote was built against a different share scope.
+ *
+ * Deliberately a HASH, not the inventory: mf-manifest.json is served
+ * unauthenticated, and listing exact dependency versions (or build SHAs /
+ * timestamps) in a public artifact is an information-disclosure /
+ * fingerprinting vector. Equality is all the host needs; the preimage is not
+ * recoverable. Build provenance (git sha, builder) belongs in CI metadata and
+ * the authenticated catalog, never here. Policy: docs/release-train.md.
+ */
+export function computeCompatToken(rootDir) {
+  const versions = { ...resolveSharedVersions(rootDir), ...resolveWorkspaceVersions(rootDir) };
+  const lines = Object.keys(versions)
+    .sort()
+    .map(name => `${name}@${versions[name]}`);
+  lines.push(`protocol@${readProtocolVersion(rootDir)}`);
+  return createHash('sha256').update(lines.join('\n')).digest('hex');
+}
+
+/**
+ * Read PROTOCOL_VERSION from @myek/platform's source. Regex over the TS file
+ * because this runs in build config (.mjs, no TS loader); the constant's
+ * declaration shape is part of the platform package's contract — if this
+ * throws, the build fails loudly rather than stamping a wrong token.
+ */
+function readProtocolVersion(rootDir) {
+  const src = fs.readFileSync(
+    path.join(rootDir, 'node_modules', '@myek', 'platform', 'src', 'index.ts'),
+    'utf8',
+  );
+  const match = src.match(/export const PROTOCOL_VERSION = (\d+);/);
+  if (!match) {
+    throw new Error('[shared-versions] PROTOCOL_VERSION not found in @myek/platform — compat token cannot be computed');
+  }
+  return match[1];
 }

@@ -50,11 +50,17 @@ const WidgetRendererImpl: React.FC<WidgetRendererProps> = ({ config, preview = f
   // remote service (with mf coords). Subscribing here means the tile flips to
   // the remote once the catalog loads (else it renders in-host).
   const remoteService = useCatalogStore(s => s.widgetToService[config.widgetId]);
+  // Catalog says the remote fetches its own data → the host must not double-
+  // fetch. Skip puts useWidgetData in passive mode (cache hydrate only), which
+  // also keeps a host-side payload around as the remote's cross-version fallback.
+  const selfFetch = useCatalogStore(s => Boolean(s.selfFetchWidgets[config.widgetId]));
 
   // Hook is always called (rules of hooks); `skip` puts it into a passive
-  // preview mode for the edit drawer — no fetcher, no interval, no refresh
-  // listener. Initial state is hydrated synchronously from the cache.
-  const { data, loading, error, isStale, refresh } = useWidgetData<unknown>(config, { skip: preview });
+  // mode — no fetcher, no interval, no refresh listener. Used by the edit
+  // drawer (preview) and by self-fetching federated widgets.
+  const { data, loading, error, isStale, refresh } = useWidgetData<unknown>(config, {
+    skip: preview || (selfFetch && appConfig.mf.enabled),
+  });
 
   // Federate when the catalog says so (and not in the edit-drawer preview).
   // FederatedWidget falls back to the in-host Component while loading / on failure.

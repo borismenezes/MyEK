@@ -11,6 +11,13 @@ const log = createLogger('MF');
 export interface CatalogWidget {
   id: string;
   serviceId: string;
+  /**
+   * The remote widget fetches its own data (api.ts via @myek/api-client +
+   * the shared QueryClient); the host skips its useWidgetData fetch for this
+   * tile so there's no double request. Additive — absent means the legacy
+   * data-via-props contract.
+   */
+  selfFetching?: boolean;
 }
 
 export interface ServiceCatalogResponse {

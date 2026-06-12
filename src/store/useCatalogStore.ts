@@ -25,6 +25,8 @@ interface CatalogState {
   servicesById: Record<string, ServiceDefinition>;
   /** widgetId → the remote service that provides it (drives federated rendering). */
   widgetToService: Record<string, ServiceDefinition>;
+  /** widgetIds whose remote self-fetches — the host skips its own data fetch. */
+  selfFetchWidgets: Record<string, true>;
   /** True once a catalog fetch has completed (success or empty). */
   loaded: boolean;
   /** True while the rendered catalog came from the MMKV cache and a revalidate is pending/failed. */
@@ -45,15 +47,20 @@ interface CatalogState {
   reset: () => void;
 }
 
-function buildMaps(body: ServiceCatalogResponse): Pick<CatalogState, 'servicesById' | 'widgetToService'> {
+function buildMaps(
+  body: ServiceCatalogResponse,
+): Pick<CatalogState, 'servicesById' | 'widgetToService' | 'selfFetchWidgets'> {
   const servicesById: Record<string, ServiceDefinition> = {};
   for (const s of body.services) servicesById[s.id] = s;
   const widgetToService: Record<string, ServiceDefinition> = {};
+  const selfFetchWidgets: Record<string, true> = {};
   for (const w of body.widgets) {
     const svc = servicesById[w.serviceId];
-    if (svc?.mf) widgetToService[w.id] = svc; // only federated (has mf coords)
+    if (!svc?.mf) continue; // only federated (has mf coords)
+    widgetToService[w.id] = svc;
+    if (w.selfFetching) selfFetchWidgets[w.id] = true;
   }
-  return { servicesById, widgetToService };
+  return { servicesById, widgetToService, selfFetchWidgets };
 }
 
 /**
@@ -71,7 +78,7 @@ function warmRemotes(services: ServiceDefinition[]): void {
 
 /** Synchronous LKG hydrate — the home grid flips federated on the first frame
  *  after boot instead of waiting out the catalog roundtrip. */
-function hydrateFromCache(): Pick<CatalogState, 'servicesById' | 'widgetToService' | 'stale'> | null {
+function hydrateFromCache(): Pick<CatalogState, 'servicesById' | 'widgetToService' | 'selfFetchWidgets' | 'stale'> | null {
   const cached = json.get<ServiceCatalogResponse>(stores.cache, CACHE_KEY);
   if (!cached || !Array.isArray(cached.services)) return null;
   return { ...buildMaps(cached), stale: true };
@@ -86,6 +93,7 @@ if (hydrated) {
 export const useCatalogStore = create<CatalogState>((set) => ({
   servicesById: hydrated?.servicesById ?? {},
   widgetToService: hydrated?.widgetToService ?? {},
+  selfFetchWidgets: hydrated?.selfFetchWidgets ?? {},
   loaded: false,
   stale: hydrated?.stale ?? false,
   error: null,
@@ -112,6 +120,6 @@ export const useCatalogStore = create<CatalogState>((set) => ({
   reset() {
     stores.cache.delete(CACHE_KEY);
     resetRegisteredRemotes();
-    set({ servicesById: {}, widgetToService: {}, loaded: false, stale: false, error: null });
+    set({ servicesById: {}, widgetToService: {}, selfFetchWidgets: {}, loaded: false, stale: false, error: null });
   },
 }));

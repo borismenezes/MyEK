@@ -108,7 +108,7 @@ export const DraggableGrid: React.FC<DraggableGridProps> = ({
       }
     }
     return out;
-  }, [items, columnWidth, gap]);
+  }, [items, columnWidth, gap, horizontalPadding]);
 
   const totalHeight = useMemo(() => {
     if (slots.length === 0) return 0;
@@ -149,7 +149,7 @@ interface GridItemProps {
   children: React.ReactNode;
 }
 
-const GridItem: React.FC<GridItemProps> = ({ item, index, slots, editing, allItems, onReorder, onLongPressStart, children }) => {
+const GridItem: React.FC<GridItemProps> = ({ index, slots, editing, allItems, onReorder, onLongPressStart, children }) => {
   const slot = slots[index];
   const tx = useSharedValue(slot.x);
   const ty = useSharedValue(slot.y);

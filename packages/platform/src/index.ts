@@ -24,6 +24,8 @@
  * compare it against their compiled-in copy with `checkBridgeProtocol`.
  */
 
+import type { HostActionHandlers, HostActionName, HostActionPayloads } from '@myek/sdk';
+
 declare const __DEV__: boolean;
 
 const G = globalThis as unknown as Record<string, unknown>;
@@ -171,27 +173,69 @@ export const getPlatformUser = userSlot.get;
 /** Subscribe to platform-user changes. Returns an unsubscribe fn. */
 export const subscribeUser = userSlot.subscribe;
 
-// ── Open-profile action ───────────────────────────────────────────────────────
+// ── Host-action registry ──────────────────────────────────────────────────────
+// One slot holding the host's typed handler map (HostActionPayloads in
+// @myek/sdk — type-only import, erased at build, so no runtime dep). Remotes
+// invoke by name; the registered handlers ARE the allowlist: an unknown or
+// unregistered action dev-warns instead of failing silently, and never
+// executes anything. A new host capability = an sdk payload type + one
+// handler in PlatformBridge — not a new hand-rolled slot pair. Fire-and-
+// forget only; anything needing state/subscriptions graduates to a
+// first-class slot (like user/theme below).
 
-const openProfileSlot = createActionSlot<() => void>('open_profile');
+const hostActionsSlot = createBridgeSlot<HostActionHandlers>('host_actions');
 
-export const setOpenProfile = openProfileSlot.set;
-/** Open the host's profile sheet (no-op + dev warning before the host publishes). */
-export function openProfile(): void {
-  openProfileSlot.invoke();
+/** Host-side: register the action handlers this shell supports (PlatformBridge). */
+export function registerHostActions(handlers: HostActionHandlers | null): void {
+  hostActionsSlot.set(handlers);
 }
 
-// ── Copy-to-clipboard action ──────────────────────────────────────────────────
-// The clipboard is a native module linked in the HOST. Rather than have every
-// remote depend on it, the host publishes a copy action (with its own toast/
-// feedback) and remotes call it — same pattern as openProfile.
+/** Invoke a host action from a remote (typed by name via @myek/sdk). */
+export function hostAction<K extends HostActionName>(
+  name: K,
+  ...payload: HostActionPayloads[K] extends void ? [] : [HostActionPayloads[K]]
+): void {
+  const fn = hostActionsSlot.get()?.[name];
+  if (typeof fn === 'function') {
+    (fn as (p: unknown) => void)(payload[0]);
+  } else if (__DEV__) {
+    console.warn(
+      `[myek/platform] host action "${name}" is not registered — host predates this remote, ` +
+        'or PlatformBridge is not mounted above the federated UI.',
+    );
+  }
+}
 
+// ── Legacy action slots (deprecated wrappers) ─────────────────────────────────
+// Published remote bundles call openProfile/copyToClipboard against their own
+// bundled copy of this package, which reads the legacy slots — so the host's
+// PlatformBridge populates BOTH the registry and these. The wrappers below
+// prefer the registry (new host) and fall back to the legacy slot (old host),
+// covering every host/remote version pairing. New code calls hostAction().
+
+const openProfileSlot = createActionSlot<() => void>('open_profile');
 const copySlot = createActionSlot<(text: string, label?: string) => void>('copy');
 
+/** @deprecated Host-side: register via registerHostActions; kept for old bundles. */
+export const setOpenProfile = openProfileSlot.set;
+/** @deprecated Use `hostAction('openProfile')`. */
+export function openProfile(): void {
+  if (hostActionsSlot.get()?.openProfile) {
+    hostAction('openProfile');
+  } else {
+    openProfileSlot.invoke();
+  }
+}
+
+/** @deprecated Host-side: register via registerHostActions; kept for old bundles. */
 export const setCopyToClipboard = copySlot.set;
-/** Copy `text` to the clipboard via the host (shows host-side feedback). */
+/** @deprecated Use `hostAction('copyToClipboard', { text, label })`. */
 export function copyToClipboard(text: string, label?: string): void {
-  copySlot.invoke(text, label);
+  if (hostActionsSlot.get()?.copyToClipboard) {
+    hostAction('copyToClipboard', { text, label });
+  } else {
+    copySlot.invoke(text, label);
+  }
 }
 
 // ── Active theme ──────────────────────────────────────────────────────────────

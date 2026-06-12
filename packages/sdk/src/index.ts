@@ -37,6 +37,8 @@ export interface WidgetConfig {
   layout?: { size?: 'small' | 'medium' | 'large' };
   /** Display label for the owning application/service. */
   applicationName?: string;
+  /** Poll interval for self-fetching widgets (host passes its per-widget value). */
+  refreshIntervalMs?: number;
 }
 
 /**
@@ -61,3 +63,32 @@ export type WidgetComponent<T = unknown> = React.ComponentType<WidgetProps<T>>;
  * The host's FederatedWidget looks its tile up in this map.
  */
 export type WidgetExposeMap = Record<string, WidgetComponent<never>>;
+
+// ── Host actions ──────────────────────────────────────────────────────────────
+
+/**
+ * Typed payload map for the host-action registry (@myek/platform
+ * `hostAction`). One entry per action the host shell can perform on a
+ * remote's behalf. ADDITIVE-ONLY, like every contract in this package:
+ * add actions, never rename/retype existing ones.
+ *
+ * Deliberately NOT a generic event bus: every action is named and typed
+ * here, the host registers an explicit handler per action, and unknown
+ * names are telemetry events — stringly-typed buses degenerate into
+ * untraceable coupling. A capability graduates to its own first-class
+ * bridge slot when it needs state/subscription semantics (like theme/user)
+ * rather than fire-and-forget invocation.
+ */
+export interface HostActionPayloads {
+  /** Open the host's profile/ID sheet. */
+  openProfile: void;
+  /** Copy text via the host's clipboard module (host shows its own feedback). */
+  copyToClipboard: { text: string; label?: string };
+}
+
+export type HostActionName = keyof HostActionPayloads;
+
+/** Handler map the host registers (PlatformBridge). Partial: register what the shell supports. */
+export type HostActionHandlers = {
+  [K in HostActionName]?: (payload: HostActionPayloads[K]) => void;
+};
